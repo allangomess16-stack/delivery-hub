@@ -1648,3 +1648,53 @@ body[data-carregando="true"]::after {
     animation: none;
   }
 }
+
+/* =========================================================
+ * V0.3.8 - PRIMEIRA LEITURA ACIONAVEL / DADOS OPCIONAIS
+ * ======================================================= */
+.scanner-candidato {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 14px;
+  border: 2px solid rgba(255, 184, 46, 0.55);
+  border-radius: var(--raio-medio);
+  background: rgba(255, 184, 46, 0.08);
+}
+
+.scanner-candidato[hidden] {
+  display: none;
+}
+
+.scanner-candidato > strong {
+  font-size: clamp(1.3rem, 6vw, 2rem);
+  line-height: 1.05;
+  letter-spacing: 0.03em;
+  word-break: break-all;
+}
+
+.scanner-candidato > span:not(.sobrelinha) {
+  color: var(--texto-secundario);
+  font-weight: 800;
+}
+
+.scanner-candidato > small {
+  color: var(--texto-secundario);
+  line-height: 1.35;
+}
+
+.homologacao-recebedores .botao-acao[data-selecionado="true"] {
+  border-color: var(--primaria);
+  color: var(--primaria);
+  background: rgba(34, 199, 255, 0.08);
+}
+
+.dados-recebedor-opcionais {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.dados-recebedor-opcionais[hidden] {
+  display: none;
+}

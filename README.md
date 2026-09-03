@@ -204,3 +204,17 @@ Para atualizar e gerar o APK de homologação:
 BAT\GITHUB\07_GERAR_APK_HOMOLOGACAO.bat
 ```
 
+## V0.3.8 — leitura imediata e dados opcionais do recebedor
+
+O scanner nao obriga mais o entregador a esperar a segunda leitura. Assim que o
+primeiro tracking e reconhecido, o aplicativo mostra o codigo e a transportadora
+e libera `CONFIRMAR E CONTINUAR`. Se a camera reencontrar o mesmo codigo em uma
+janela curta, a confirmacao ocorre automaticamente.
+
+No recebedor, nome e CPF/documento ficam disponiveis para registro, mas sao
+opcionais. Deixar CPF/documento vazio nao bloqueia a conclusao da entrega.
+
+Para esta e as proximas versoes, use sempre o ZIP completo em uma pasta nova. O
+`BAT\GITHUB\07_GERAR_APK_HOMOLOGACAO.bat` adota o historico atual do GitHub
+antes de criar o commit da nova versao, evitando reconstruir o historico remoto.
+

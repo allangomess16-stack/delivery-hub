@@ -1023,24 +1023,46 @@ export class AplicacaoDeliveryHub {
 
   private ligarTelaRecebedor() {
     const campoNome = document.querySelector<HTMLElement>("#campo-nome-recebedor");
+    const campoDocumento = document.querySelector<HTMLElement>("#campo-documento-recebedor");
     const inputNome = document.querySelector<HTMLInputElement>("#nome-recebedor");
+    const inputDocumento = document.querySelector<HTMLInputElement>("#documento-recebedor");
     let tipoSelecionado = obterEstadoEntrega(this.pacoteAtual!).recebedor?.tipo;
+
+    const salvarRecebedor = async () => {
+      if (!this.pacoteAtual || !tipoSelecionado) return;
+      definirRecebedor(this.pacoteAtual, {
+        tipo: tipoSelecionado,
+        nome:
+          tipoSelecionado === "PROPRIO"
+            ? undefined
+            : inputNome?.value.trim() || undefined,
+        documento: inputDocumento?.value.trim() || undefined,
+      });
+      await this.salvarCargaEntregador();
+    };
+
     document.querySelectorAll<HTMLButtonElement>("[data-recebedor]").forEach((botao) => {
       botao.addEventListener("click", async () => {
         if (!this.pacoteAtual) return;
         tipoSelecionado = botao.dataset.recebedor as TipoRecebedor;
         document.querySelectorAll<HTMLButtonElement>("[data-recebedor]").forEach((item) => { item.dataset.selecionado = String(item === botao); });
         campoNome?.classList.toggle("campo-grande--oculto", tipoSelecionado === "PROPRIO");
-        definirRecebedor(this.pacoteAtual, { tipo: tipoSelecionado, nome: tipoSelecionado === "PROPRIO" ? undefined : inputNome?.value.trim() || undefined });
-        await this.salvarCargaEntregador();
+        campoDocumento?.classList.remove("campo-grande--oculto");
+        await salvarRecebedor();
         const proximo = document.querySelector<HTMLButtonElement>("#ir-finalizar"); if (proximo) proximo.disabled = false;
       });
     });
+
     inputNome?.addEventListener("input", async () => {
-      if (!this.pacoteAtual || !tipoSelecionado || tipoSelecionado === "PROPRIO") return;
-      definirRecebedor(this.pacoteAtual, { tipo: tipoSelecionado, nome: inputNome.value.trim() || undefined });
-      await this.salvarCargaEntregador();
+      if (!tipoSelecionado || tipoSelecionado === "PROPRIO") return;
+      await salvarRecebedor();
     });
+
+    inputDocumento?.addEventListener("input", async () => {
+      if (!tipoSelecionado) return;
+      await salvarRecebedor();
+    });
+
     document.querySelector("#voltar-fotos")?.addEventListener("click", () => { this.telaEntregaAtual = "FOTOS"; this.renderizarFluxoEntrega(); });
     document.querySelector("#ir-finalizar")?.addEventListener("click", () => { if (!this.pacoteAtual || !obterEstadoEntrega(this.pacoteAtual).recebedor) return; this.telaEntregaAtual = "FINALIZAR"; this.renderizarFluxoEntrega(); });
   }

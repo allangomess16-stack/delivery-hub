@@ -1,42 +1,38 @@
-DELIVERY HUB V0.3.6 - PROJETO COMPLETO
+DELIVERY HUB V0.3.8 - PROJETO COMPLETO
 
 ESTE ZIP JA CONTEM A ESTRUTURA COMPLETA DO SISTEMA.
 
-NAO MISTURE COM PASTAS DE VERSOES ANTIGAS.
-
-RECOMENDADO:
-1. Extraia este ZIP em uma pasta nova.
-2. Entre em delivery-hub-v0.3.6.
-3. Execute:
-
-   BAT\GITHUB\00_LOGIN_GITHUB.bat
-
-4. Depois execute:
+PADRAO A PARTIR DE AGORA:
+1. Baixe o ZIP COMPLETO da nova versao.
+2. Extraia em uma PASTA NOVA.
+3. Nao precisa copiar arquivos da versao anterior.
+4. Entre na pasta extraida.
+5. Execute:
 
    BAT\GITHUB\07_GERAR_APK_HOMOLOGACAO.bat
 
-O repositorio usado atualmente e:
+O BAT 07 agora detecta uma pasta nova sem .git e:
+- inicia o Git local;
+- conecta em allangomess16-stack/delivery-hub;
+- busca o main atual;
+- adota o historico remoto sem apagar os arquivos da nova versao;
+- cria apenas o commit da atualizacao;
+- envia o main normalmente;
+- dispara o GitHub Actions;
+- gera e baixa o novo APK.
 
-   allangomess16-stack/delivery-hub
-
-O BAT 07:
-- confirma login;
-- conecta o projeto ao repositorio existente;
-- instala dependencias;
-- valida TypeScript;
-- executa testes;
-- envia main;
-- dispara GitHub Actions;
-- compila o APK;
-- baixa o artefato para APK\.
-
-WORKFLOW:
-.github\workflows\apk-homologacao.yml
+ALTERACOES PRINCIPAIS DA V0.3.8:
+- primeira leitura do scanner aparece imediatamente;
+- pode confirmar na primeira leitura sem esperar;
+- segunda leitura rapida ainda confirma automaticamente;
+- leitura continua otimizada diretamente no video;
+- nome do recebedor e CPF/documento disponiveis;
+- CPF/documento e opcional e pode ficar vazio.
 
 APK ESPERADO:
-APK\DeliveryHub-Homologacao-v0.3.6.apk
+APK\DeliveryHub-Homologacao-v0.3.8.apk
 
 IMPORTANTE:
-- O APK de homologacao nao envia baixa para transportadoras.
-- O scan real de etiqueta funciona em modo somente leitura.
-- Nao coloque APKs de Anjun/iMile/J&T dentro do Git.
+- homologacao nao envia baixa real para transportadoras;
+- scan real continua em modo somente leitura;
+- nao inclua APKs das transportadoras no GitHub.

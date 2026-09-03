@@ -147,12 +147,16 @@ rem ============================================================
 echo.
 echo [5/9] Preparando Git...
 
+set "PASTA_GIT_NOVA=0"
 if not exist ".git" (
+  echo [INFO] Pasta completa nova detectada.
+  echo        O historico do GitHub sera adotado antes do commit.
   git init
   if errorlevel 1 (
     echo [ERRO] git init falhou.
     goto :FALHOU
   )
+  set "PASTA_GIT_NOVA=1"
 )
 
 git branch -M main
@@ -179,6 +183,25 @@ if not defined ORIGIN_ATUAL (
   )
 )
 
+if "!PASTA_GIT_NOVA!"=="1" (
+  echo.
+  echo Adotando historico atual de origin/main...
+  git fetch origin main
+  if errorlevel 1 (
+    echo [ERRO] Nao foi possivel buscar origin/main.
+    goto :FALHOU
+  )
+
+  rem Mixed reset posiciona o HEAD no GitHub e preserva os arquivos
+  rem completos extraidos do ZIP como alteracoes locais.
+  git reset --mixed origin/main
+  if errorlevel 1 (
+    echo [ERRO] Nao foi possivel alinhar a pasta nova ao historico remoto.
+    goto :FALHOU
+  )
+  echo [OK] Pasta nova alinhada ao historico existente do GitHub.
+)
+
 git config --local user.name >nul 2>nul
 if errorlevel 1 git config --local user.name "allangomess16-stack"
 
@@ -199,7 +222,7 @@ if errorlevel 1 (
   del /q "!TMP_VERSAO!" >nul 2>nul
   if not defined VERSAO set "VERSAO=atual"
 
-  git commit -m "chore: consolidar Delivery Hub v!VERSAO!"
+  git commit -m "feat: atualizar Delivery Hub v!VERSAO!"
   if errorlevel 1 (
     echo [ERRO] git commit falhou.
     goto :FALHOU

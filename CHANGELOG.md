@@ -2,6 +2,20 @@
 
 Todas as versões aprovadas do Delivery Hub são identificadas por tags Git `vX.Y.Z`.
 
+## 0.3.8
+
+### Homologacao operacional
+- primeira leitura do scanner passa a ser imediatamente acionavel;
+- tracking e transportadora aparecem assim que o primeiro codigo e detectado;
+- botao `CONFIRMAR E CONTINUAR` permite seguir sem esperar uma segunda leitura;
+- segunda leitura continua como confirmacao automatica quando ocorrer em janela curta;
+- scanner deixa de converter cada quadro em JPEG quando ha leitura direta disponivel;
+- ZXing passa a trabalhar diretamente no stream de video como fallback continuo;
+- nome e CPF/documento do recebedor aparecem no fluxo como campos opcionais;
+- CPF/documento vazio nao impede confirmar a entrega;
+- resumo final mostra quando CPF/documento nao foi informado;
+- BAT 07 passa a adotar automaticamente o historico remoto quando o ZIP completo for extraido em uma pasta nova.
+
 ## 0.3.7
 
 ### Scanner ao vivo

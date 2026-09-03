@@ -44,9 +44,14 @@ export class AplicacaoHomologacao {
   private pacoteAtual: PacoteDemo | null = null;
   private fotosEvidencia = 0;
   private recebedor = "";
+  private recebedorNome = "";
+  private recebedorDocumento = "";
   private resultadoMensagem = "";
   private scannerAoVivo: ControleScannerCamera | null = null;
-  private readonly confirmadorLeitura = new ConfirmadorLeituraFrames(2);
+  private readonly confirmadorLeitura = new ConfirmadorLeituraFrames(2, 1_800);
+  private candidatoScanner: CodigoEtiquetaAnalisado | null = null;
+  private analiseCandidata: AnaliseEtiquetaHomologacao | null = null;
+  private mecanismoCandidato = "";
   private scannerToken = 0;
 
   constructor(private readonly raiz: HTMLElement) {}
@@ -121,9 +126,71 @@ export class AplicacaoHomologacao {
     if (visor) visor.dataset.estado = estado;
   }
 
+  private atualizarCandidatoScanner(
+    candidato: CodigoEtiquetaAnalisado | null,
+    analise: AnaliseEtiquetaHomologacao | null,
+    mecanismo: string,
+  ): void {
+    this.candidatoScanner = candidato;
+    this.analiseCandidata = analise;
+    this.mecanismoCandidato = mecanismo;
+
+    const painel = document.querySelector<HTMLElement>("#scanner-candidato");
+    const codigo = document.querySelector<HTMLElement>("#scanner-candidato-codigo");
+    const transportadora = document.querySelector<HTMLElement>(
+      "#scanner-candidato-transportadora",
+    );
+    const botao = document.querySelector<HTMLButtonElement>(
+      "#scanner-confirmar-primeira",
+    );
+
+    if (!painel || !codigo || !transportadora || !botao) return;
+
+    if (!candidato) {
+      painel.hidden = true;
+      botao.disabled = true;
+      return;
+    }
+
+    codigo.textContent = candidato.normalizado;
+    transportadora.textContent = candidato.conhecido
+      ? candidato.nomeTransportadora
+      : "Transportadora ainda nao identificada";
+    painel.hidden = false;
+    botao.disabled = false;
+  }
+
+  private confirmarCandidatoScanner(modo: "MANUAL" | "AUTOMATICO"): void {
+    const candidato = this.candidatoScanner;
+    const analise = this.analiseCandidata;
+    if (!candidato || !analise) return;
+
+    this.analiseAtual = {
+      ...analise,
+      principal: candidato,
+      exigeEscolha: false,
+    };
+    this.resultadoMensagem =
+      modo === "MANUAL"
+        ? `Scanner ao vivo / ${this.mecanismoCandidato} / confirmado pelo entregador na primeira leitura`
+        : `Scanner ao vivo / ${this.mecanismoCandidato} / confirmado automaticamente`;
+
+    this.atualizarStatusScanner(
+      `Confirmado: ${candidato.normalizado}`,
+      "confirmado",
+    );
+    navigator.vibrate?.(modo === "MANUAL" ? 60 : 90);
+    this.scannerAoVivo?.parar();
+    this.scannerAoVivo = null;
+    this.ir("RESULTADO_SCAN");
+  }
+
   private async iniciarScannerHomologacao(): Promise<void> {
     this.pararScannerAoVivo();
     this.confirmadorLeitura.limpar();
+    this.candidatoScanner = null;
+    this.analiseCandidata = null;
+    this.mecanismoCandidato = "";
 
     const token = ++this.scannerToken;
     const video = document.querySelector<HTMLVideoElement>("#scanner-video");
@@ -138,20 +205,41 @@ export class AplicacaoHomologacao {
 
     try {
       const controle = await iniciarScannerCameraContinuo(video, {
-        intervaloMs: 420,
+        intervaloMs: 140,
         onLeitura: (leitura) => {
           if (token !== this.scannerToken || this.tela !== "SCAN") return;
 
           const progresso = this.confirmadorLeitura.registrar(leitura.codigos);
           const candidato = progresso.candidato;
 
+          if (candidato) {
+            const analiseCandidata: AnaliseEtiquetaHomologacao = progresso.analise
+              ? {
+                  ...progresso.analise,
+                  principal: candidato,
+                  exigeEscolha: false,
+                }
+              : {
+                  codigos: [candidato],
+                  principal: candidato,
+                  exigeEscolha: false,
+                };
+
+            const mudou =
+              this.candidatoScanner?.normalizado !== candidato.normalizado;
+            this.atualizarCandidatoScanner(
+              candidato,
+              analiseCandidata,
+              leitura.mecanismo,
+            );
+
+            if (mudou) navigator.vibrate?.(25);
+          }
+
           if (!progresso.confirmado) {
             if (candidato) {
               this.atualizarStatusScanner(
-                `Detectado ${candidato.normalizado}. Confirmando ${Math.min(
-                  progresso.leituras,
-                  progresso.necessarias,
-                )}/${progresso.necessarias}...`,
+                `Leitura encontrada: ${candidato.normalizado}. Confira abaixo ou mantenha enquadrado para confirmacao automatica.`,
                 "detectado",
               );
             } else {
@@ -162,14 +250,18 @@ export class AplicacaoHomologacao {
             return;
           }
 
+          if (candidato) {
+            this.confirmarCandidatoScanner("AUTOMATICO");
+            return;
+          }
+
           if (!progresso.analise) return;
 
           this.analiseAtual = progresso.analise;
-          this.resultadoMensagem = `Scanner ao vivo / ${leitura.mecanismo} / confirmado em ${progresso.necessarias} leituras`;
+          this.resultadoMensagem =
+            `Scanner ao vivo / ${leitura.mecanismo} / varios codigos confirmados`;
           this.atualizarStatusScanner(
-            candidato
-              ? `Confirmado: ${candidato.normalizado}`
-              : "Leituras confirmadas. Selecione o tracking principal.",
+            "Mais de um tracking foi lido. Selecione o codigo principal.",
             "confirmado",
           );
           navigator.vibrate?.(90);
@@ -180,7 +272,7 @@ export class AplicacaoHomologacao {
             if (token === this.scannerToken && this.tela === "SCAN") {
               this.ir("RESULTADO_SCAN");
             }
-          }, 220);
+          }, 120);
         },
         onErro: (erro) => {
           if (token !== this.scannerToken || this.tela !== "SCAN") return;
@@ -201,7 +293,7 @@ export class AplicacaoHomologacao {
           : "Lanterna nao disponivel nesta camera";
       }
       this.atualizarStatusScanner(
-        "Scanner ativo. Aponte para o codigo e mantenha por um instante.",
+        "Scanner ativo. A primeira leitura ja aparecera abaixo para conferencia.",
       );
     } catch (erro) {
       if (token !== this.scannerToken || this.tela !== "SCAN") return;
@@ -314,8 +406,9 @@ export class AplicacaoHomologacao {
           <span class="sobrelinha">SCAN REAL / SOMENTE LEITURA</span>
           <h1>Aponte para a etiqueta</h1>
           <p>
-            Nao precisa tirar foto. O Delivery Hub procura barcode/QR continuamente e
-            confirma o mesmo codigo em dois quadros antes de aceitar a leitura.
+            Nao precisa tirar foto. Assim que houver a primeira leitura, tracking e
+            transportadora aparecem abaixo. Voce pode confirmar na hora ou aguardar
+            uma segunda leitura rapida para confirmacao automatica.
           </p>
 
           <div id="scanner-visor" class="scanner-ao-vivo" data-estado="procurando">
@@ -337,6 +430,16 @@ export class AplicacaoHomologacao {
           <div id="status-homologacao" class="status-scanner-foto" data-estado="procurando" aria-live="polite">
             ${escaparHtml(mensagem || "Preparando camera...")}
           </div>
+
+          <section id="scanner-candidato" class="scanner-candidato" hidden aria-live="polite">
+            <span class="sobrelinha">PRIMEIRA LEITURA</span>
+            <strong id="scanner-candidato-codigo">--</strong>
+            <span id="scanner-candidato-transportadora">--</span>
+            <button id="scanner-confirmar-primeira" class="botao-acao botao-acao--sucesso botao-largura-total" disabled>
+              CONFIRMAR E CONTINUAR
+            </button>
+            <small>Se estiver correto, nao e necessario esperar a segunda leitura.</small>
+          </section>
 
           <div class="scanner-ao-vivo__controles">
             <button id="scanner-lanterna" class="botao-acao botao-acao--secundario" disabled>
@@ -388,6 +491,11 @@ export class AplicacaoHomologacao {
     document.querySelector("#scanner-reiniciar")?.addEventListener("click", () => {
       void this.iniciarScannerHomologacao();
     });
+
+    document.querySelector("#scanner-confirmar-primeira")?.addEventListener(
+      "click",
+      () => this.confirmarCandidatoScanner("MANUAL"),
+    );
 
     document.querySelector("#scanner-lanterna")?.addEventListener("click", async () => {
       if (!this.scannerAoVivo) return;
@@ -653,7 +761,7 @@ export class AplicacaoHomologacao {
   }
 
   private renderizarRecebedor(): void {
-    const opcoes = ["Proprio destinatario", "Portaria", "Familiar", "Vizinho"];
+    const opcoes = ["Proprio destinatario", "Portaria", "Familiar", "Vizinho", "Outro"];
 
     this.raiz.innerHTML = `
       ${this.cabecalho("Delivery Hub", "Recebedor")}
@@ -662,26 +770,66 @@ export class AplicacaoHomologacao {
         <section class="painel-operacao">
           <span class="sobrelinha">ETAPA 2 DE 3</span>
           <h1>Quem recebeu?</h1>
+          <p>Escolha o tipo. Nome e CPF/documento podem ser preenchidos se forem necessarios, mas nao bloqueiam a entrega.</p>
           <div class="homologacao-recebedores">
             ${opcoes.map((opcao) => `
-              <button class="botao-acao botao-acao--secundario" data-recebedor="${escaparHtml(opcao)}">
+              <button
+                class="botao-acao botao-acao--secundario"
+                data-recebedor="${escaparHtml(opcao)}"
+                data-selecionado="${this.recebedor === opcao ? "true" : "false"}"
+              >
                 ${escaparHtml(opcao).toUpperCase()}
               </button>
             `).join("")}
           </div>
+
+          <div id="dados-recebedor-opcionais" class="dados-recebedor-opcionais" ${this.recebedor ? "" : "hidden"}>
+            <label class="campo-grande">
+              <span>NOME (OPCIONAL)</span>
+              <input id="homologacao-recebedor-nome" value="${escaparHtml(this.recebedorNome)}" autocomplete="off" placeholder="Nome de quem recebeu" />
+            </label>
+
+            <label class="campo-grande">
+              <span>CPF / DOCUMENTO (OPCIONAL)</span>
+              <input id="homologacao-recebedor-documento" value="${escaparHtml(this.recebedorDocumento)}" autocomplete="off" inputmode="numeric" placeholder="Pode deixar em branco" />
+            </label>
+
+            <div class="mensagem-operacao">Esses dados sao opcionais nesta etapa e podem ficar vazios.</div>
+          </div>
         </section>
       </main>
-      <footer class="acoes-fixas acoes-fixas--unica">
+      <footer class="acoes-fixas">
         <button id="voltar-evidencias" class="botao-acao botao-acao--secundario">VOLTAR</button>
+        <button id="seguir-finalizar" class="botao-acao botao-acao--primario" ${this.recebedor ? "" : "disabled"}>CONTINUAR</button>
       </footer>
     `;
+
+    const dados = document.querySelector<HTMLElement>("#dados-recebedor-opcionais");
+    const botaoContinuar = document.querySelector<HTMLButtonElement>("#seguir-finalizar");
+    const inputNome = document.querySelector<HTMLInputElement>("#homologacao-recebedor-nome");
+    const inputDocumento = document.querySelector<HTMLInputElement>("#homologacao-recebedor-documento");
 
     document.querySelector("#voltar-evidencias")?.addEventListener("click", () => this.ir("EVIDENCIAS"));
     document.querySelectorAll<HTMLButtonElement>("[data-recebedor]").forEach((botao) => {
       botao.addEventListener("click", () => {
         this.recebedor = botao.dataset.recebedor ?? "";
-        this.ir("FINALIZAR");
+        document.querySelectorAll<HTMLButtonElement>("[data-recebedor]").forEach((item) => {
+          item.dataset.selecionado = String(item === botao);
+        });
+        if (dados) dados.hidden = false;
+        if (botaoContinuar) botaoContinuar.disabled = !this.recebedor;
       });
+    });
+
+    inputNome?.addEventListener("input", () => {
+      this.recebedorNome = inputNome.value.trim();
+    });
+    inputDocumento?.addEventListener("input", () => {
+      this.recebedorDocumento = inputDocumento.value.trim();
+    });
+    botaoContinuar?.addEventListener("click", () => {
+      if (!this.recebedor) return;
+      this.ir("FINALIZAR");
     });
   }
 
@@ -699,6 +847,8 @@ export class AplicacaoHomologacao {
           <p>
             Tracking: <strong>${escaparHtml(pacote.tracking)}</strong><br/>
             Recebedor: <strong>${escaparHtml(this.recebedor)}</strong><br/>
+            Nome: <strong>${escaparHtml(this.recebedorNome || "Nao informado")}</strong><br/>
+            CPF/documento: <strong>${escaparHtml(this.recebedorDocumento || "Nao informado")}</strong><br/>
             Fotos: <strong>${this.fotosEvidencia}</strong>
           </p>
         </section>

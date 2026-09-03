@@ -1,6 +1,7 @@
 import { obterEstadoEntrega } from "../../aplicacao/estado-entrega";
 import type { PacoteDaCarga } from "../../dominio/carga/tipos";
 import { cabecalhoFixo } from "../componentes/cabecalho";
+import { escaparHtml } from "../componentes/html";
 
 export function telaFinalizarEntrega(pacote: PacoteDaCarga) {
   const entrega = obterEstadoEntrega(pacote);
@@ -24,6 +25,7 @@ export function telaFinalizarEntrega(pacote: PacoteDaCarga) {
         <div><span>Etiqueta</span><strong>${temEtiqueta ? "REGISTRADA" : "NAO REGISTRADA"}</strong></div>
         <div><span>Fachada</span><strong>${temFachada ? "REGISTRADA" : "NAO REGISTRADA"}</strong></div>
         <div><span>Recebedor</span><strong>${entrega.recebedor?.tipo ?? "NAO INFORMADO"}</strong></div>
+        <div><span>CPF / documento</span><strong>${escaparHtml(entrega.recebedor?.documento || "NAO INFORMADO")}</strong></div>
       </section>
 
       <div class="acoes-empilhadas">

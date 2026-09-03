@@ -1,7 +1,10 @@
+import { BrowserMultiFormatReader } from "@zxing/browser";
 import {
-  lerCodigosDaFoto,
-  type ResultadoLeituraFoto,
-} from "./leitor-codigo-foto";
+  BarcodeFormat,
+  DecodeHintType,
+  NotFoundException,
+} from "@zxing/library";
+import type { ResultadoLeituraFoto } from "./leitor-codigo-foto";
 
 export interface EventoLeituraCamera extends ResultadoLeituraFoto {}
 
@@ -23,6 +26,30 @@ interface CapacidadesVideoComLanterna extends MediaTrackCapabilities {
 
 interface RestricaoAvancadaLanterna extends MediaTrackConstraintSet {
   torch?: boolean;
+}
+
+interface ResultadoBarcodeDetector {
+  rawValue?: string;
+}
+
+interface InstanciaBarcodeDetector {
+  detect(fonte: ImageBitmapSource): Promise<ResultadoBarcodeDetector[]>;
+}
+
+type ConstrutorBarcodeDetector = new (opcoes?: {
+  formats?: string[];
+}) => InstanciaBarcodeDetector;
+
+function obterBarcodeDetector(): ConstrutorBarcodeDetector | null {
+  return (
+    globalThis as typeof globalThis & {
+      BarcodeDetector?: ConstrutorBarcodeDetector;
+    }
+  ).BarcodeDetector ?? null;
+}
+
+function unicos(valores: string[]): string[] {
+  return [...new Set(valores.map((valor) => valor.trim()).filter(Boolean))];
 }
 
 function erroLegivelCamera(erro: unknown): Error {
@@ -49,63 +76,16 @@ function erroLegivelCamera(erro: unknown): Error {
     : new Error("Nao foi possivel iniciar a camera ao vivo.");
 }
 
-async function frameParaArquivo(video: HTMLVideoElement): Promise<File> {
-  const larguraOrigem = video.videoWidth;
-  const alturaOrigem = video.videoHeight;
-
-  if (!larguraOrigem || !alturaOrigem) {
-    throw new Error("A camera ainda esta preparando a imagem.");
-  }
-
-  // O visor orienta o entregador a centralizar o barcode. Recortamos essa regiao
-  // antes da decodificacao para o codigo ocupar mais pixels e para reduzir a
-  // interferencia de outros barcodes/QR impressos na mesma etiqueta.
-  const larguraRecorte = Math.round(larguraOrigem * 0.92);
-  const alturaRecorte = Math.round(alturaOrigem * 0.46);
-  const origemX = Math.round((larguraOrigem - larguraRecorte) / 2);
-  const origemY = Math.round((alturaOrigem - alturaRecorte) / 2);
-
-  const maxLargura = 1600;
-  const escala = Math.min(1, maxLargura / larguraRecorte);
-  const largura = Math.max(1, Math.round(larguraRecorte * escala));
-  const altura = Math.max(1, Math.round(alturaRecorte * escala));
-
-  const canvas = document.createElement("canvas");
-  canvas.width = largura;
-  canvas.height = altura;
-
-  const contexto = canvas.getContext("2d", {
-    alpha: false,
-    willReadFrequently: false,
-  });
-
-  if (!contexto) {
-    throw new Error("Nao foi possivel preparar o quadro da camera.");
-  }
-
-  contexto.drawImage(
-    video,
-    origemX,
-    origemY,
-    larguraRecorte,
-    alturaRecorte,
-    0,
-    0,
-    largura,
-    altura,
-  );
-
-  const blob = await new Promise<Blob | null>((resolver) =>
-    canvas.toBlob(resolver, "image/jpeg", 0.92),
-  );
-
-  if (!blob) {
-    throw new Error("Nao foi possivel analisar o quadro da camera.");
-  }
-
-  return new File([blob], "scanner-frame.jpg", { type: "image/jpeg" });
-}
-
+/**
+ * Scanner continuo otimizado para operacao em rota.
+ *
+ * Ordem:
+ * 1. BarcodeDetector diretamente no elemento <video>, quando o WebView oferece a API.
+ *    Nao gera JPEG nem reabre a imagem a cada tentativa.
+ * 2. ZXing diretamente no stream de video como fallback.
+ *
+ * A foto continua existindo em outro fluxo apenas como redundancia.
+ */
 export async function iniciarScannerCameraContinuo(
   video: HTMLVideoElement,
   opcoes: OpcoesScannerCamera,
@@ -143,11 +123,12 @@ export async function iniciarScannerCameraContinuo(
   }
 
   let ativo = true;
-  let processando = false;
   let temporizador: number | null = null;
   let lanternaLigada = false;
   let ultimoErroEm = 0;
-  const intervaloMs = Math.max(250, opcoes.intervaloMs ?? 420);
+  let controlesZxing: { stop(): void } | null = null;
+  let processandoNativo = false;
+  const intervaloMs = Math.max(90, opcoes.intervaloMs ?? 140);
   const trilhaVideo = stream.getVideoTracks()[0] ?? null;
 
   const capacidades = trilhaVideo?.getCapabilities?.() as
@@ -155,48 +136,118 @@ export async function iniciarScannerCameraContinuo(
     | undefined;
   const temLanterna = Boolean(capacidades?.torch);
 
-  const agendar = (): void => {
+  const emitir = async (
+    codigos: string[],
+    mecanismo: ResultadoLeituraFoto["mecanismo"],
+  ): Promise<void> => {
     if (!ativo) return;
-    temporizador = window.setTimeout(() => void analisarFrame(), intervaloMs);
+    const normalizados = unicos(codigos);
+    if (!normalizados.length) return;
+    await opcoes.onLeitura({ codigos: normalizados, mecanismo });
   };
 
-  const analisarFrame = async (): Promise<void> => {
-    if (!ativo || processando) return agendar();
+  const BarcodeDetector = obterBarcodeDetector();
 
-    if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
-      return agendar();
+  if (BarcodeDetector) {
+    let detector: InstanciaBarcodeDetector;
+    try {
+      detector = new BarcodeDetector({
+        formats: ["code_128", "code_39", "qr_code", "ean_13", "itf"],
+      });
+    } catch {
+      detector = new BarcodeDetector();
     }
 
-    processando = true;
+    const agendarNativo = (): void => {
+      if (!ativo) return;
+      temporizador = window.setTimeout(
+        () => void analisarNativo(),
+        intervaloMs,
+      );
+    };
+
+    const analisarNativo = async (): Promise<void> => {
+      if (!ativo || processandoNativo) return agendarNativo();
+      if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+        return agendarNativo();
+      }
+
+      processandoNativo = true;
+      try {
+        const resultados = await detector.detect(video);
+        await emitir(
+          resultados.map((resultado) => resultado.rawValue ?? ""),
+          "BARCODE_DETECTOR",
+        );
+      } catch (erro) {
+        if (Date.now() - ultimoErroEm > 3_000) {
+          ultimoErroEm = Date.now();
+          opcoes.onErro?.(
+            erro instanceof Error
+              ? erro
+              : new Error("Falha temporaria ao analisar a camera."),
+          );
+        }
+      } finally {
+        processandoNativo = false;
+        agendarNativo();
+      }
+    };
+
+    agendarNativo();
+  } else {
+    const hints = new Map();
+    hints.set(DecodeHintType.POSSIBLE_FORMATS, [
+      BarcodeFormat.CODE_128,
+      BarcodeFormat.CODE_39,
+      BarcodeFormat.QR_CODE,
+      BarcodeFormat.EAN_13,
+      BarcodeFormat.ITF,
+    ]);
+
+    const leitor = new BrowserMultiFormatReader(hints, {
+      delayBetweenScanAttempts: intervaloMs,
+      delayBetweenScanSuccess: 80,
+    });
 
     try {
-      const arquivo = await frameParaArquivo(video);
-      const leitura = await lerCodigosDaFoto(arquivo);
-      await opcoes.onLeitura(leitura);
-    } catch (erro) {
-      const mensagem = erro instanceof Error ? erro.message : String(erro ?? "");
-      const ausenciaDeCodigo = mensagem.startsWith(
-        "Nenhum codigo de barras ou QR foi identificado",
+      controlesZxing = await leitor.decodeFromStream(
+        stream,
+        video,
+        (resultado, erro) => {
+          if (!ativo) return;
+
+          if (resultado) {
+            void emitir([resultado.getText()], "ZXING");
+            return;
+          }
+
+          if (
+            erro &&
+            !(erro instanceof NotFoundException) &&
+            Date.now() - ultimoErroEm > 3_000
+          ) {
+            ultimoErroEm = Date.now();
+            opcoes.onErro?.(
+              erro instanceof Error
+                ? erro
+                : new Error("Falha temporaria ao analisar a camera."),
+            );
+          }
+        },
       );
-
-      if (!ausenciaDeCodigo && Date.now() - ultimoErroEm > 2_000) {
-        ultimoErroEm = Date.now();
-        opcoes.onErro?.(
-          erro instanceof Error ? erro : new Error("Falha ao analisar a camera."),
-        );
-      }
-    } finally {
-      processando = false;
-      agendar();
+    } catch (erro) {
+      stream.getTracks().forEach((trilha) => trilha.stop());
+      video.srcObject = null;
+      throw erroLegivelCamera(erro);
     }
-  };
-
-  agendar();
+  }
 
   return {
     parar(): void {
       ativo = false;
       if (temporizador !== null) window.clearTimeout(temporizador);
+      controlesZxing?.stop();
       stream.getTracks().forEach((trilha) => trilha.stop());
       video.srcObject = null;
     },

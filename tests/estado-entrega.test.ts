@@ -32,6 +32,30 @@ describe("ciclo de vida da entrega", () => {
     expect(() => confirmarEntrega(pacote)).toThrow();
   });
 
+  it("aceita CPF/documento opcional e preserva quando informado", () => {
+    const pacote = novoPacote();
+    iniciarEntrega(pacote);
+
+    definirRecebedor(pacote, {
+      tipo: "PORTARIA",
+      nome: "Joao",
+      documento: "12345678900",
+    });
+
+    expect(pacote.entrega?.recebedor?.documento).toBe("12345678900");
+    confirmarEntrega(pacote);
+    expect(pacote.entrega?.estadoFisico).toBe("ENTREGUE");
+  });
+
+  it("nao exige CPF/documento para confirmar a entrega", () => {
+    const pacote = novoPacote();
+    iniciarEntrega(pacote);
+    definirRecebedor(pacote, { tipo: "PORTARIA" });
+
+    expect(() => confirmarEntrega(pacote)).not.toThrow();
+    expect(pacote.entrega?.recebedor?.documento).toBeUndefined();
+  });
+
   it("conclui e permite desfazer antes da baixa externa", () => {
     const pacote = novoPacote();
     iniciarEntrega(pacote);

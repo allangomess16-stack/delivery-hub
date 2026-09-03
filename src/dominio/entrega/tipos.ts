@@ -67,6 +67,7 @@ export interface EventoEntrega {
 export interface RecebedorEntrega {
   tipo: TipoRecebedor;
   nome?: string;
+  documento?: string;
 }
 
 export interface AcaoDesfazivel {
