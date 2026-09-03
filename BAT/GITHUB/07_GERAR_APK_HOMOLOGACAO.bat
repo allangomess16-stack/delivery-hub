@@ -8,15 +8,16 @@ echo ============================================================
 echo  DELIVERY HUB - ENVIAR PROJETO E GERAR APK
 echo ============================================================
 echo.
-echo Este BAT foi preparado para o repositorio:
+echo Repositorio:
 echo   allangomess16-stack/delivery-hub
 echo.
-echo Ele:
-echo   1. confirma o login GitHub;
-echo   2. conecta o projeto ao repositorio existente;
-echo   3. valida e envia a branch main;
-echo   4. inicia o GitHub Actions;
-echo   5. baixa o APK de homologacao.
+echo Este BAT:
+echo   1. confirma login;
+echo   2. valida o projeto;
+echo   3. protege o historico remoto existente;
+echo   4. sincroniza a versao local completa;
+echo   5. gera o APK pelo GitHub Actions;
+echo   6. baixa o APK para a pasta APK.
 echo.
 
 rem ============================================================
@@ -66,7 +67,6 @@ if errorlevel 1 (
 
 if not exist "%RAIZ%\package.json" (
   echo [ERRO] package.json nao encontrado.
-  echo.
   echo Este BAT deve ficar em:
   echo BAT\GITHUB\07_GERAR_APK_HOMOLOGACAO.bat
   pause
@@ -75,13 +75,15 @@ if not exist "%RAIZ%\package.json" (
 
 pushd "%RAIZ%"
 
-rem ============================================================
-rem LOGIN
-rem ============================================================
+set "REPO=allangomess16-stack/delivery-hub"
+set "REPO_URL=https://github.com/allangomess16-stack/delivery-hub.git"
 set "GH_TOKEN="
 set "GITHUB_TOKEN="
 
-echo [1/8] Confirmando login GitHub...
+rem ============================================================
+rem LOGIN
+rem ============================================================
+echo [1/9] Confirmando login GitHub...
 "%GH_EXE%" auth status --hostname github.com
 if errorlevel 1 (
   echo.
@@ -96,35 +98,29 @@ if errorlevel 1 (
 "%GH_EXE%" auth setup-git >nul 2>nul
 
 rem ============================================================
-rem REPOSITORIO EXISTENTE
+rem REPOSITORIO
 rem ============================================================
 echo.
-echo [2/8] Confirmando repositorio remoto...
-
-set "REPO=allangomess16-stack/delivery-hub"
-set "REPO_URL=https://github.com/allangomess16-stack/delivery-hub.git"
+echo [2/9] Confirmando repositorio...
 set "TMP_REPO=%TEMP%\delivery-hub-repo-%RANDOM%.txt"
 
 "%GH_EXE%" repo view "%REPO%" --json nameWithOwner --jq .nameWithOwner > "%TMP_REPO%" 2>nul
 if errorlevel 1 (
   del /q "%TMP_REPO%" >nul 2>nul
-  echo.
-  echo [ERRO] O repositorio %REPO% nao foi encontrado pela GitHub CLI.
-  echo O login esta correto; verifique permissao da conta.
+  echo [ERRO] O repositorio %REPO% nao foi encontrado.
   goto :FALHOU
 )
 
 set "REPO_CONFIRMADO="
 set /p "REPO_CONFIRMADO="<"%TMP_REPO%"
 del /q "%TMP_REPO%" >nul 2>nul
-
 echo [OK] !REPO_CONFIRMADO!
 
 rem ============================================================
-rem DEPENDENCIAS / VALIDACAO
+rem DEPENDENCIAS / TESTES
 rem ============================================================
 echo.
-echo [3/8] Preparando dependencias...
+echo [3/9] Preparando dependencias...
 call npm install --no-audit --no-fund
 if errorlevel 1 (
   echo [ERRO] npm install falhou.
@@ -132,7 +128,7 @@ if errorlevel 1 (
 )
 
 echo.
-echo [4/8] Validando projeto...
+echo [4/9] Validando projeto...
 call npm run validate
 if errorlevel 1 (
   echo [ERRO] Validacao TypeScript falhou.
@@ -146,10 +142,10 @@ if errorlevel 1 (
 )
 
 rem ============================================================
-rem GIT LOCAL
+rem GIT
 rem ============================================================
 echo.
-echo [5/8] Preparando Git...
+echo [5/9] Preparando Git...
 
 if not exist ".git" (
   git init
@@ -163,7 +159,6 @@ git branch -M main
 
 set "ORIGIN_ATUAL="
 set "TMP_ORIGIN=%TEMP%\delivery-hub-origin-%RANDOM%.txt"
-
 git remote get-url origin > "%TMP_ORIGIN%" 2>nul
 if not errorlevel 1 set /p "ORIGIN_ATUAL="<"%TMP_ORIGIN%"
 del /q "%TMP_ORIGIN%" >nul 2>nul
@@ -176,9 +171,6 @@ if not defined ORIGIN_ATUAL (
   )
 ) else (
   if /I not "!ORIGIN_ATUAL!"=="%REPO_URL%" (
-    echo [INFO] Ajustando origin existente:
-    echo        !ORIGIN_ATUAL!
-    echo     -^> %REPO_URL%
     git remote set-url origin "%REPO_URL%"
     if errorlevel 1 (
       echo [ERRO] Nao foi possivel corrigir origin.
@@ -187,38 +179,16 @@ if not defined ORIGIN_ATUAL (
   )
 )
 
-rem Identidade Git local
-set "GIT_NOME="
-set "GIT_EMAIL="
-git config --local user.name > "%TEMP%\dh-git-name-%RANDOM%.txt" 2>nul
-for %%F in ("%TEMP%\dh-git-name-*.txt") do (
-  if exist "%%F" (
-    set /p "GIT_NOME="<"%%F"
-    del /q "%%F" >nul 2>nul
-  )
-)
-git config --local user.email > "%TEMP%\dh-git-email-%RANDOM%.txt" 2>nul
-for %%F in ("%TEMP%\dh-git-email-*.txt") do (
-  if exist "%%F" (
-    set /p "GIT_EMAIL="<"%%F"
-    del /q "%%F" >nul 2>nul
-  )
-)
+git config --local user.name >nul 2>nul
+if errorlevel 1 git config --local user.name "allangomess16-stack"
 
-if not defined GIT_NOME git config --local user.name "allangomess16-stack"
-if not defined GIT_EMAIL git config --local user.email "241206720+allangomess16-stack@users.noreply.github.com"
+git config --local user.email >nul 2>nul
+if errorlevel 1 git config --local user.email "241206720+allangomess16-stack@users.noreply.github.com"
 
-rem ============================================================
-rem COMMIT / PUSH
-rem ============================================================
 echo.
-echo [6/8] Enviando projeto ao GitHub...
-
+echo Preparando commit local...
 git add .
-if errorlevel 1 (
-  echo [ERRO] git add falhou.
-  goto :FALHOU
-)
+if errorlevel 1 goto :FALHOU
 
 git diff --cached --quiet
 if errorlevel 1 (
@@ -229,7 +199,7 @@ if errorlevel 1 (
   del /q "!TMP_VERSAO!" >nul 2>nul
   if not defined VERSAO set "VERSAO=atual"
 
-  git commit -m "chore: preparar homologacao Delivery Hub v!VERSAO!"
+  git commit -m "chore: consolidar Delivery Hub v!VERSAO!"
   if errorlevel 1 (
     echo [ERRO] git commit falhou.
     goto :FALHOU
@@ -238,48 +208,115 @@ if errorlevel 1 (
   echo [OK] Nenhuma alteracao nova para commit.
 )
 
-git push -u origin main
-if errorlevel 1 (
-  echo.
-  echo [ERRO] Push para o GitHub falhou.
-  echo Veja a mensagem do Git acima.
-  goto :FALHOU
-)
-
-echo [OK] Projeto enviado para %REPO%.
-
 rem ============================================================
-rem WORKFLOW
+rem FETCH + PROTECAO DO HISTORICO
 rem ============================================================
 echo.
-echo [7/8] Iniciando compilacao do APK...
+echo [6/9] Sincronizando historico remoto com seguranca...
 
-if not exist ".github\workflows\apk-homologacao.yml" (
-  echo.
-  echo [ERRO] Workflow nao encontrado:
-  echo .github\workflows\apk-homologacao.yml
-  echo.
-  echo Copie o arquivo de workflow fornecido junto com este BAT
-  echo antes de executar novamente.
+git fetch origin main
+if errorlevel 1 (
+  echo [ERRO] Nao foi possivel buscar origin/main.
   goto :FALHOU
 )
 
-rem Garante que o workflow mais recente foi enviado
-git add ".github\workflows\apk-homologacao.yml"
-git diff --cached --quiet
+set "REMOTE_SHA="
+set "TMP_SHA=%TEMP%\delivery-hub-remote-sha-%RANDOM%.txt"
+git rev-parse origin/main > "%TMP_SHA%" 2>nul
+if not errorlevel 1 set /p "REMOTE_SHA="<"%TMP_SHA%"
+del /q "%TMP_SHA%" >nul 2>nul
+
+if not defined REMOTE_SHA (
+  echo [ERRO] Nao foi possivel identificar o commit remoto.
+  goto :FALHOU
+)
+
+echo Commit remoto atual:
+echo !REMOTE_SHA!
+
+rem Verifica se o remoto ja e ancestral do local.
+git merge-base --is-ancestor origin/main main >nul 2>nul
+if not errorlevel 1 (
+  echo [OK] Historicos compativeis. Push normal sera usado.
+  set "MODO_PUSH=NORMAL"
+) else (
+  echo.
+  echo [INFO] O repositorio remoto possui um historico anterior independente.
+  echo        Isso ocorreu nas primeiras tentativas de configuracao.
+  echo.
+  echo O commit remoto sera preservado antes da atualizacao.
+
+  rem Nome fixo + SHA curto evita depender de data/hora e evita colisao.
+  set "SHA_CURTO=!REMOTE_SHA:~0,8!"
+  set "BACKUP_BRANCH=backup/pre-consolidacao-!SHA_CURTO!"
+
+  git show-ref --verify --quiet "refs/heads/!BACKUP_BRANCH!"
+  if errorlevel 1 (
+    git branch "!BACKUP_BRANCH!" origin/main
+    if errorlevel 1 (
+      echo [ERRO] Nao foi possivel criar backup local.
+      goto :FALHOU
+    )
+  )
+
+  echo Criando backup remoto:
+  echo !BACKUP_BRANCH!
+
+  git push origin "!BACKUP_BRANCH!:!BACKUP_BRANCH!"
+  if errorlevel 1 (
+    echo [ERRO] Nao foi possivel preservar o main remoto em backup.
+    echo O main NAO foi alterado.
+    goto :FALHOU
+  )
+
+  echo [OK] Historico remoto preservado.
+  set "MODO_PUSH=FORCE_LEASE"
+)
+
+rem ============================================================
+rem PUSH
+rem ============================================================
+echo.
+echo [7/9] Atualizando main...
+
+if "!MODO_PUSH!"=="NORMAL" (
+  git push -u origin main
+) else (
+  echo Usando force-with-lease protegido pelo SHA:
+  echo !REMOTE_SHA!
+  git push ^
+    --force-with-lease=main:!REMOTE_SHA! ^
+    -u origin main
+)
+
 if errorlevel 1 (
-  git commit -m "ci: ajustar build APK homologacao"
-  if errorlevel 1 goto :FALHOU
-  git push origin main
-  if errorlevel 1 goto :FALHOU
+  echo.
+  echo [ERRO] O main nao foi atualizado.
+  echo.
+  echo Nenhuma sobrescrita insegura foi realizada.
+  echo Se outra alteracao chegou ao GitHub durante o processo,
+  echo execute este BAT novamente.
+  goto :FALHOU
+)
+
+echo [OK] main atualizado.
+echo.
+
+rem ============================================================
+rem CONFIRMAR WORKFLOW NO REMOTO
+rem ============================================================
+echo [8/9] Iniciando GitHub Actions...
+
+if not exist ".github\workflows\apk-homologacao.yml" (
+  echo [ERRO] Workflow local nao encontrado.
+  goto :FALHOU
 )
 
 "%GH_EXE%" workflow run "apk-homologacao.yml" --ref main --repo "%REPO%"
 if errorlevel 1 (
   echo.
-  echo [ERRO] Nao foi possivel iniciar o GitHub Actions.
-  echo.
-  echo Verificando workflows disponiveis:
+  echo [ERRO] Nao foi possivel iniciar o workflow.
+  echo Workflows disponiveis:
   "%GH_EXE%" workflow list --repo "%REPO%"
   goto :FALHOU
 )
@@ -301,19 +338,18 @@ if not errorlevel 1 set /p "RUN_ID="<"%TMP_RUN%"
 del /q "%TMP_RUN%" >nul 2>nul
 
 if not defined RUN_ID (
-  echo.
-  echo [ERRO] A execucao foi solicitada, mas o RUN_ID nao apareceu.
+  echo [ERRO] O RUN_ID nao foi localizado.
   "%GH_EXE%" run list --repo "%REPO%" --workflow "apk-homologacao.yml"
   goto :FALHOU
 )
 
 echo.
-echo Acompanhando GitHub Actions #!RUN_ID!...
+echo Acompanhando build #!RUN_ID!...
 "%GH_EXE%" run watch "!RUN_ID!" --repo "%REPO%" --exit-status
 if errorlevel 1 (
   echo.
-  echo [ERRO] O build falhou.
-  echo Abrindo detalhes no navegador...
+  echo [ERRO] O build do APK falhou.
+  echo Abrindo detalhes...
   "%GH_EXE%" run view "!RUN_ID!" --repo "%REPO%" --web
   goto :FALHOU
 )
@@ -322,7 +358,7 @@ rem ============================================================
 rem DOWNLOAD
 rem ============================================================
 echo.
-echo [8/8] Baixando APK...
+echo [9/9] Baixando APK...
 
 if not exist "%RAIZ%\APK" mkdir "%RAIZ%\APK"
 
@@ -332,7 +368,6 @@ if not exist "%RAIZ%\APK" mkdir "%RAIZ%\APK"
   --dir "%RAIZ%\APK"
 
 if errorlevel 1 (
-  echo.
   echo [ERRO] O build terminou, mas o APK nao foi baixado.
   goto :FALHOU
 )
@@ -342,10 +377,14 @@ echo ============================================================
 echo [OK] APK DE HOMOLOGACAO GERADO
 echo ============================================================
 echo.
+echo Projeto:
+echo %REPO%
+echo.
 echo Pasta:
 echo %RAIZ%\APK
 echo.
-echo Esse e o arquivo que pode ser enviado ao socio.
+echo Se houve consolidacao de historico, a versao anterior foi
+echo preservada em uma branch backup/pre-consolidacao-XXXXXXXX.
 echo.
 start "" "%RAIZ%\APK"
 
