@@ -1,0 +1,107 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "usuarios": {
+      ".read": "auth != null && root.child('usuarios').child(auth.uid).child('tipo').val() === 'ADMIN'",
+      ".indexOn": ["entregadorId", "tipo"],
+
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || root.child('usuarios').child(auth.uid).child('tipo').val() === 'ADMIN')",
+        ".write": "auth != null && root.child('usuarios').child(auth.uid).child('tipo').val() === 'ADMIN'",
+        ".validate": "newData.hasChildren(['email', 'nome', 'tipo', 'ativo', 'criadoEm', 'atualizadoEm']) && newData.child('email').isString() && newData.child('nome').isString() && newData.child('ativo').isBoolean() && (newData.child('tipo').val() === 'ADMIN' || newData.child('tipo').val() === 'ENTREGADOR') && (newData.child('tipo').val() !== 'ENTREGADOR' || newData.child('entregadorId').isString())",
+
+        "email": {
+          ".validate": "newData.isString() && newData.val().length > 3 && newData.val().length < 255"
+        },
+        "nome": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length < 160"
+        },
+        "tipo": {
+          ".validate": "newData.val() === 'ADMIN' || newData.val() === 'ENTREGADOR'"
+        },
+        "ativo": {
+          ".validate": "newData.isBoolean()"
+        },
+        "entregadorId": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length < 100"
+        },
+        "criadoEm": {
+          ".validate": "newData.isString()"
+        },
+        "atualizadoEm": {
+          ".validate": "newData.isString()"
+        },
+        "$outro": {
+          ".validate": false
+        }
+      }
+    },
+
+    "dados": {
+      "profiles": {
+        "couriers": {
+          "$entregadorId": {
+            ".read": "auth != null && (root.child('usuarios').child(auth.uid).child('tipo').val() === 'ADMIN' || (root.child('usuarios').child(auth.uid).child('ativo').val() === true && root.child('usuarios').child(auth.uid).child('entregadorId').val() === $entregadorId))",
+            ".write": "auth != null && root.child('usuarios').child(auth.uid).child('tipo').val() === 'ADMIN'"
+          }
+        }
+      },
+
+      "profile-links": {
+        ".read": "auth != null && root.child('usuarios').child(auth.uid).child('tipo').val() === 'ADMIN'",
+        ".write": "auth != null && root.child('usuarios').child(auth.uid).child('tipo').val() === 'ADMIN'"
+      }
+    },
+
+    "cargas": {
+      "$entregadorId": {
+        ".read": "auth != null && (root.child('usuarios').child(auth.uid).child('tipo').val() === 'ADMIN' || (root.child('usuarios').child(auth.uid).child('ativo').val() === true && root.child('usuarios').child(auth.uid).child('entregadorId').val() === $entregadorId))",
+        ".write": "auth != null && root.child('usuarios').child(auth.uid).child('tipo').val() === 'ADMIN'"
+      }
+    },
+
+    "operacoes": {
+      "$entregadorId": {
+        ".read": "auth != null && (root.child('usuarios').child(auth.uid).child('tipo').val() === 'ADMIN' || (root.child('usuarios').child(auth.uid).child('ativo').val() === true && root.child('usuarios').child(auth.uid).child('entregadorId').val() === $entregadorId))",
+        ".write": "auth != null && (root.child('usuarios').child(auth.uid).child('tipo').val() === 'ADMIN' || (root.child('usuarios').child(auth.uid).child('ativo').val() === true && root.child('usuarios').child(auth.uid).child('entregadorId').val() === $entregadorId))",
+
+        "$cargaId": {
+          "$pacoteId": {
+            ".validate": "newData.hasChildren(['entrega', 'usuarioId', 'atualizadoEm']) && (root.child('usuarios').child(auth.uid).child('tipo').val() === 'ADMIN' || newData.child('usuarioId').val() === auth.uid)",
+
+            "usuarioId": {
+              ".validate": "newData.isString()"
+            },
+            "atualizadoEm": {
+              ".validate": "newData.isString()"
+            },
+            "entrega": {
+              ".validate": "newData.hasChildren(['estadoFisico', 'estadoBaixaExterna', 'fotos', 'eventos'])",
+
+              "estadoFisico": {
+                ".validate": "newData.val() === 'PENDENTE' || newData.val() === 'PREPARANDO' || newData.val() === 'AGUARDANDO_RECEBEDOR' || newData.val() === 'ENTREGUE' || newData.val() === 'NAO_ENTREGUE'"
+              },
+              "estadoBaixaExterna": {
+                ".validate": "newData.val() === 'NAO_INICIADA' || newData.val() === 'PREPARADA' || newData.val() === 'ABERTA_NO_APP_EXTERNO' || newData.val() === 'ENVIANDO' || newData.val() === 'CONFIRMADA' || newData.val() === 'FALHOU' || newData.val() === 'EXIGE_ACAO_MANUAL'"
+              },
+              "$campo": {
+                ".validate": true
+              }
+            },
+
+            "$outro": {
+              ".validate": false
+            }
+          }
+        }
+      }
+    },
+
+    "meta": {
+      ".read": "auth != null",
+      ".write": "auth != null && root.child('usuarios').child(auth.uid).child('tipo').val() === 'ADMIN'"
+    }
+  }
+}

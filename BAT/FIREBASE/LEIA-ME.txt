@@ -1,0 +1,26 @@
+DELIVERY HUB - FIREBASE
+
+01_CRIAR_E_CONFIGURAR.bat
+  Primeira execucao. Cria projeto, Realtime Database, App Web,
+  ativa Email/Senha, publica regras e Hosting.
+
+02_CRIAR_ADMIN_INICIAL.bat
+  Cria o primeiro login ADMIN com senha digitada de forma protegida.
+
+03_SUBIR_ATUALIZACAO.bat
+  Uso normal depois da configuracao: valida, builda e publica.
+
+04_VALIDAR_CONFIGURACAO.bat
+  Diagnostico de projeto, banco, app e build.
+
+05_ABRIR_CONSOLE.bat
+  Abre o console Firebase do projeto configurado.
+
+06_USAR_MODO_LOCAL.bat
+  Volta temporariamente ao servidor local de desenvolvimento.
+
+07_USAR_MODO_FIREBASE.bat
+  Reativa o backend Firebase no navegador.
+
+08_EMULADORES.bat
+  Inicia os emuladores locais Firebase.
