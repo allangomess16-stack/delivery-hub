@@ -2,6 +2,20 @@
 
 Todas as versões aprovadas do Delivery Hub são identificadas por tags Git `vX.Y.Z`.
 
+## 0.3.9
+
+### Reenquadramento da interface
+- V0.3.8 mantida como baseline funcional homologada.
+- `app.ts` reduzido de cerca de 1.117 para cerca de 590 linhas.
+- Gestão de cargas extraída para `ControladorAdminCargas`.
+- Fluxo de entrega extraído para `ControladorFluxoEntrega`.
+- Estado visual isolado em `EstadoUiSessao`, sem Firebase/IndexedDB operacional.
+- Filtros, seleção e scroll do Admin são preservados entre re-renderizações.
+- Delegação de eventos aplicada nas listas principais.
+- Edição de endereço/região migrou para Bottom Sheet com foco e confirmação de descarte.
+- Edição de localização atualiza somente card e resumo de regiões, sem desmontar a lista inteira.
+- Scanner e recebedor aprovados na V0.3.8 não tiveram regra funcional alterada.
+
 ## 0.3.8
 
 ### Homologacao operacional

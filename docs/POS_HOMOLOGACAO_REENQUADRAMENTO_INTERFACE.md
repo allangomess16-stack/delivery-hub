@@ -77,3 +77,16 @@ ação do entregador
 ```
 
 Esta etapa deve ser feita antes da próxima expansão funcional após a homologação.
+
+## Status — V0.3.9
+
+Etapa executada após a homologação da V0.3.8.
+
+- `app.ts` foi reduzido;
+- controladores foram introduzidos;
+- estado de UI foi isolado;
+- filtros/scroll/seleção passaram a ser preservados no Admin;
+- Bottom Sheet contextual foi introduzido;
+- primeira mutação granular foi aplicada na edição de endereço/região.
+
+O documento permanece como guardrail arquitetural para novas telas.

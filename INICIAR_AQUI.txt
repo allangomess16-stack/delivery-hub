@@ -1,4 +1,4 @@
-DELIVERY HUB V0.3.8 - PROJETO COMPLETO
+DELIVERY HUB V0.3.9 - PROJETO COMPLETO
 
 ESTE ZIP JA CONTEM A ESTRUTURA COMPLETA DO SISTEMA.
 
@@ -21,7 +21,7 @@ O BAT 07 agora detecta uma pasta nova sem .git e:
 - dispara o GitHub Actions;
 - gera e baixa o novo APK.
 
-ALTERACOES PRINCIPAIS DA V0.3.8:
+ALTERACOES PRINCIPAIS DA V0.3.9:
 - primeira leitura do scanner aparece imediatamente;
 - pode confirmar na primeira leitura sem esperar;
 - segunda leitura rapida ainda confirma automaticamente;
@@ -30,9 +30,14 @@ ALTERACOES PRINCIPAIS DA V0.3.8:
 - CPF/documento e opcional e pode ficar vazio.
 
 APK ESPERADO:
-APK\DeliveryHub-Homologacao-v0.3.8.apk
+APK\DeliveryHub-Homologacao-v0.3.9.apk
 
 IMPORTANTE:
 - homologacao nao envia baixa real para transportadoras;
 - scan real continua em modo somente leitura;
 - nao inclua APKs das transportadoras no GitHub.
+
+
+V0.3.9 - REENQUADRAMENTO DE INTERFACE
+A V0.3.8 permanece a referencia funcional homologada.
+Esta versao reorganiza a arquitetura antes de novas funcoes.

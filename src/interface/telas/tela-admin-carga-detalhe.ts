@@ -16,30 +16,72 @@ function podeAlterar(pacote: PacoteDaCarga): boolean {
   return obterEstadoEntrega(pacote).estadoFisico === "PENDENTE";
 }
 
+function destinosAtivos(carga: CargaEntregador, perfis: PerfilEntregador[]) {
+  return perfis.filter((perfil) => perfil.ativo && perfil.entregadorId !== carga.entregadorId);
+}
+
+export function htmlResumoRegioesAdmin(carga: CargaEntregador): string {
+  const regioes = resumirCargaPorRegiao(carga.pacotes);
+  return regioes.map((regiao) => `
+    <button class="regiao-admin-card ${regiao.regiaoId === "SEM-REGIAO" ? "regiao-admin-card--sem-regiao" : ""}" data-filtrar-regiao-card="${escaparHtml(regiao.regiaoId)}">
+      <span>${escaparHtml(regiao.nome)}</span>
+      <strong>${regiao.pendentes}</strong>
+      <small>pendentes • ${regiao.total} total</small>
+    </button>`).join("");
+}
+
+export function htmlPacoteAdminCard(carga: CargaEntregador, pacote: PacoteDaCarga, perfis: PerfilEntregador[]): string {
+  const status = carga.status ?? "PUBLICADA";
+  const destinos = destinosAtivos(carga, perfis);
+  const estado = obterEstadoEntrega(pacote).estadoFisico;
+  const alteravel = podeAlterar(pacote) && status !== "ENCERRADA";
+  const regiaoId = idRegiaoPacote(pacote);
+  const regiaoNome = pacote.regiaoEntrega?.nome ?? "Sem regiao";
+
+  return `
+    <article class="pacote-admin-card" data-pacote-id="${escaparHtml(pacote.id)}" data-pacote-codigo="${escaparHtml(pacote.codigoNormalizado)}" data-pacote-regiao="${escaparHtml(regiaoId)}">
+      <div class="pacote-admin-card__topo">
+        ${alteravel ? `<label class="checkbox-pacote"><input type="checkbox" data-selecionar-pacote="${escaparHtml(pacote.id)}" /><span></span></label>` : ""}
+        <div class="pacote-admin-card__conteudo">
+          <strong>${escaparHtml(pacote.codigoNormalizado)}</strong>
+          <span>${escaparHtml(pacote.transportadora.nome)} • ${nomeOrigem(pacote)}</span>
+          <b class="regiao-pacote-label">${escaparHtml(regiaoNome)}</b>
+          ${pacote.enderecoEntrega?.texto ? `<small class="endereco-pacote-label">${escaparHtml(pacote.enderecoEntrega.texto)}</small>` : `<small class="endereco-pacote-label endereco-pacote-label--vazio">Endereco nao informado</small>`}
+        </div>
+        <i class="selo ${estado === "ENTREGUE" ? "selo--ok" : estado === "NAO_ENTREGUE" ? "selo--atencao" : ""}">${escaparHtml(estado)}</i>
+      </div>
+
+      <div class="pacote-admin-card__acoes pacote-admin-card__acoes--regiao">
+        <button class="botao-mini" data-editar-localizacao="${escaparHtml(pacote.id)}">ENDERECO / REGIAO</button>
+        ${alteravel ? `
+          <select data-destino-pacote="${escaparHtml(pacote.id)}" class="select-mini">
+            <option value="">Transferir para...</option>
+            ${destinos.map((perfil) => `<option value="${escaparHtml(perfil.entregadorId)}">${escaparHtml(perfil.nomeOficial)}</option>`).join("")}
+          </select>
+          <button class="botao-mini" data-transferir-pacote="${escaparHtml(pacote.id)}">TRANSFERIR</button>
+          <button class="botao-mini botao-mini--perigo" data-excluir-pacote="${escaparHtml(pacote.id)}">EXCLUIR</button>
+        ` : `<small class="pacote-admin-card__bloqueio">Em operacao/finalizado: transferencia bloqueada.</small>`}
+      </div>
+    </article>`;
+}
+
 export function telaAdminCargaDetalhe(carga: CargaEntregador, perfis: PerfilEntregador[]) {
   const status = carga.status ?? "PUBLICADA";
   const regioes = resumirCargaPorRegiao(carga.pacotes);
-  const destinos = perfis.filter((perfil) => perfil.ativo && perfil.entregadorId !== carga.entregadorId);
+  const destinos = destinosAtivos(carga, perfis);
 
   return `
     ${cabecalhoFixo("Delivery Hub • Admin", carga.nomeEntregador)}
-    <main class="conteudo conteudo--com-rodape">
+    <main class="conteudo conteudo--com-rodape" data-tela="admin-carga-detalhe">
       <section class="cabecalho-etapa">
         <span class="sobrelinha">${escaparHtml(status)}</span>
-        <h1>${carga.pacotes.length} pacotes</h1>
+        <h1><span id="total-pacotes-carga">${carga.pacotes.length}</span> pacotes</h1>
         <p>${escaparHtml(carga.dataOperacao)} • ${escaparHtml(carga.nomeArquivoOrigem)}</p>
       </section>
 
       <section class="secao-lista">
-        <div class="titulo-secao"><div><span class="sobrelinha">DISTRIBUICAO</span><h2>Por regiao</h2></div><span>${regioes.length}</span></div>
-        <div class="grade-regioes-admin">
-          ${regioes.map((regiao) => `
-            <button class="regiao-admin-card ${regiao.regiaoId === "SEM-REGIAO" ? "regiao-admin-card--sem-regiao" : ""}" data-filtrar-regiao-card="${escaparHtml(regiao.regiaoId)}">
-              <span>${escaparHtml(regiao.nome)}</span>
-              <strong>${regiao.pendentes}</strong>
-              <small>pendentes • ${regiao.total} total</small>
-            </button>`).join("")}
-        </div>
+        <div class="titulo-secao"><div><span class="sobrelinha">DISTRIBUICAO</span><h2>Por regiao</h2></div><span id="total-regioes-carga">${regioes.length}</span></div>
+        <div class="grade-regioes-admin" id="resumo-regioes-admin">${htmlResumoRegioesAdmin(carga)}</div>
       </section>
 
       ${status !== "ENCERRADA" ? `
@@ -108,37 +150,7 @@ export function telaAdminCargaDetalhe(carga: CargaEntregador, perfis: PerfilEntr
         ` : ""}
 
         <div class="lista-pacotes-admin" id="lista-pacotes-admin">
-          ${carga.pacotes.length ? carga.pacotes.map((pacote) => {
-            const estado = obterEstadoEntrega(pacote).estadoFisico;
-            const alteravel = podeAlterar(pacote) && status !== "ENCERRADA";
-            const regiaoId = idRegiaoPacote(pacote);
-            const regiaoNome = pacote.regiaoEntrega?.nome ?? "Sem regiao";
-            return `
-              <article class="pacote-admin-card" data-pacote-codigo="${escaparHtml(pacote.codigoNormalizado)}" data-pacote-regiao="${escaparHtml(regiaoId)}">
-                <div class="pacote-admin-card__topo">
-                  ${alteravel ? `<label class="checkbox-pacote"><input type="checkbox" data-selecionar-pacote="${escaparHtml(pacote.id)}" /><span></span></label>` : ""}
-                  <div class="pacote-admin-card__conteudo">
-                    <strong>${escaparHtml(pacote.codigoNormalizado)}</strong>
-                    <span>${escaparHtml(pacote.transportadora.nome)} • ${nomeOrigem(pacote)}</span>
-                    <b class="regiao-pacote-label">${escaparHtml(regiaoNome)}</b>
-                    ${pacote.enderecoEntrega?.texto ? `<small class="endereco-pacote-label">${escaparHtml(pacote.enderecoEntrega.texto)}</small>` : `<small class="endereco-pacote-label endereco-pacote-label--vazio">Endereco nao informado</small>`}
-                  </div>
-                  <i class="selo ${estado === "ENTREGUE" ? "selo--ok" : estado === "NAO_ENTREGUE" ? "selo--atencao" : ""}">${escaparHtml(estado)}</i>
-                </div>
-
-                <div class="pacote-admin-card__acoes pacote-admin-card__acoes--regiao">
-                  <button class="botao-mini" data-editar-localizacao="${escaparHtml(pacote.id)}">ENDERECO / REGIAO</button>
-                  ${alteravel ? `
-                    <select data-destino-pacote="${escaparHtml(pacote.id)}" class="select-mini">
-                      <option value="">Transferir para...</option>
-                      ${destinos.map((perfil) => `<option value="${escaparHtml(perfil.entregadorId)}">${escaparHtml(perfil.nomeOficial)}</option>`).join("")}
-                    </select>
-                    <button class="botao-mini" data-transferir-pacote="${escaparHtml(pacote.id)}">TRANSFERIR</button>
-                    <button class="botao-mini botao-mini--perigo" data-excluir-pacote="${escaparHtml(pacote.id)}">EXCLUIR</button>
-                  ` : `<small class="pacote-admin-card__bloqueio">Em operacao/finalizado: transferencia bloqueada.</small>`}
-                </div>
-              </article>`;
-          }).join("") : `<div class="estado-vazio"><strong>Carga vazia</strong><span>Adicione um pacote para continuar.</span></div>`}
+          ${carga.pacotes.length ? carga.pacotes.map((pacote) => htmlPacoteAdminCard(carga, pacote, perfis)).join("") : `<div class="estado-vazio"><strong>Carga vazia</strong><span>Adicione um pacote para continuar.</span></div>`}
         </div>
       </section>
 
@@ -161,6 +173,5 @@ export function telaAdminCargaDetalhe(carga: CargaEntregador, perfis: PerfilEntr
       ${status === "RASCUNHO"
         ? `<button id="publicar-carga" class="botao-acao botao-acao--sucesso">PUBLICAR CARGA</button>`
         : `<button id="encerrar-carga" class="botao-acao botao-acao--primario" ${status === "ENCERRADA" ? "disabled" : ""}>ENCERRAR</button>`}
-    </footer>
-  `;
+    </footer>`;
 }

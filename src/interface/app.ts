@@ -1,27 +1,18 @@
 import { prepararDadosTeste } from "../infraestrutura/mock/preparar-dados-teste";
 import type { DependenciasAplicacao } from "../configuracao/dependencias";
 import type { CargaEntregador, CargaImportada, PacoteDaCarga } from "../dominio/carga/tipos";
-import type { MotivoNaoEntrega, TipoEvidenciaFoto, TipoRecebedor } from "../dominio/entrega/tipos";
 import type { ContaAcessoEntregador, PerfilEntregador, UsuarioAtual } from "../dominio/identidade/tipos";
 import { ConciliadorPerfisPlanilha } from "../aplicacao/identidade/conciliar-perfis-planilha";
+import { ControladorAdminCargas } from "./controladores/controlador-admin-cargas";
+import { ControladorFluxoEntrega } from "./controladores/controlador-fluxo-entrega";
+import { EstadoUiSessao } from "./nucleo/estado-ui";
+import { delegarEvento, selecionar } from "./nucleo/dom";
 import { criarPerfilEntregador } from "../aplicacao/identidade/criar-perfil-entregador";
 import { normalizarNomeExcel } from "../aplicacao/identidade/normalizar-nome-excel";
 import { salvarPerfilComAcesso } from "../aplicacao/identidade/salvar-perfil-com-acesso";
 import { listarPerfisSemContaAtiva } from "../aplicacao/identidade/validar-acesso-perfis";
 import { particionarCargaPorPerfil } from "../aplicacao/carga/particionar-carga-por-perfil";
 import { resolverTelaInicial } from "../aplicacao/navegacao/resolver-tela-inicial";
-import {
-  adicionarFoto,
-  cancelarPreparacao,
-  confirmarEntrega,
-  definirRecebedor,
-  desfazerUltimaConclusao,
-  iniciarEntrega,
-  marcarNaoEntregue,
-  obterEstadoEntrega,
-  pausarEntrega,
-  removerFoto,
-} from "../aplicacao/estado-entrega";
 import { localizarPacote } from "../aplicacao/localizar-pacote";
 import { telaLogin } from "./telas/tela-login";
 import { telaAdminImportar } from "./telas/tela-admin-importar";
@@ -35,48 +26,32 @@ import { telaPerfilSemVinculo } from "./telas/tela-perfil-sem-vinculo";
 import { telaScanner } from "./telas/tela-scanner";
 import { lerCodigosDaFoto } from "../infraestrutura/scanner/leitor-codigo-foto";
 import { resolverFotoNaCarga } from "../aplicacao/scanner/resolver-foto-na-carga";
-import { telaPacoteEncontrado } from "./telas/tela-pacote-encontrado";
-import { telaFotosEntrega } from "./telas/tela-fotos-entrega";
-import { telaRecebedor } from "./telas/tela-recebedor";
-import { telaFinalizarEntrega } from "./telas/tela-finalizar-entrega";
-import { telaNaoEntregue } from "./telas/tela-nao-entregue";
-import { telaOpcoesEntrega } from "./telas/tela-opcoes-entrega";
-import { telaResultadoEntrega } from "./telas/tela-resultado-entrega";
-import { telaAdminCargas, telaNovaCargaManual } from "./telas/tela-admin-cargas";
-import { telaAdminCargaDetalhe } from "./telas/tela-admin-carga-detalhe";
-import { telaAdminLocalizacaoPacote } from "./telas/tela-admin-localizacao-pacote";
 import { telaAdminIntegracoes } from "./telas/tela-admin-integracoes";
 import { telaEntregadorRegiao } from "./telas/tela-entregador-regiao";
-import { definirLocalizacaoPacote, definirRegiaoEmLote } from "../aplicacao/regiao/atribuir-localizacao-pacote";
-import { associarEnderecosNaCarga } from "../aplicacao/regiao/associar-enderecos-na-carga";
-import {
-  adicionarPacoteNaCarga,
-  criarCargaManual,
-  criarPacoteManual,
-  encerrarCarga,
-  excluirPacoteDaCarga,
-  publicarCarga,
-  transferirPacote,
-  transferirPacotesSelecionados,
-  transferirPendentes,
-} from "../aplicacao/carga/gestao-manual-carga";
 
 const conciliador = new ConciliadorPerfisPlanilha();
 
-type TelaEntrega = "FOTOS" | "RECEBEDOR" | "FINALIZAR";
 
 export class AplicacaoDeliveryHub {
   private usuarioAtual: UsuarioAtual | null = null;
   private importacaoAdmin: CargaImportada | null = null;
   private cargaEntregador: CargaEntregador | null = null;
-  private pacoteAtual: PacoteDaCarga | null = null;
-  private telaEntregaAtual: TelaEntrega = "FOTOS";
   private compartilhamentoAtivo = false;
+  private readonly estadoUi = new EstadoUiSessao();
+  private readonly controladorAdminCargas: ControladorAdminCargas;
+  private controladorFluxoEntrega: ControladorFluxoEntrega | null = null;
 
   constructor(
     private readonly raiz: HTMLElement,
     private readonly dependencias: DependenciasAplicacao,
-  ) {}
+  ) {
+    this.controladorAdminCargas = new ControladorAdminCargas(
+      raiz,
+      dependencias,
+      this.estadoUi,
+      { voltarInicio: () => this.renderizarAdminImportar() },
+    );
+  }
 
   async iniciar() {
     await this.dependencias.prepararInfraestrutura();
@@ -115,7 +90,8 @@ export class AplicacaoDeliveryHub {
     this.usuarioAtual = null;
     this.importacaoAdmin = null;
     this.cargaEntregador = null;
-    this.pacoteAtual = null;
+    this.controladorFluxoEntrega = null;
+    this.estadoUi.limpar();
     this.renderizarLogin();
   }
 
@@ -158,387 +134,9 @@ export class AplicacaoDeliveryHub {
   }
 
 
-  private dataHojeLocal(): string {
-    const agora = new Date();
-    const ano = agora.getFullYear();
-    const mes = String(agora.getMonth() + 1).padStart(2, "0");
-    const dia = String(agora.getDate()).padStart(2, "0");
-    return `${ano}-${mes}-${dia}`;
-  }
-
-  private async obterTodasCargasAdmin() {
-    const perfis = await this.dependencias.repositorioPerfis.listar();
-    const itens: Array<{ carga: CargaEntregador; perfil: PerfilEntregador }> = [];
-
-    for (const perfil of perfis) {
-      const cargas = await this.dependencias.repositorioCargas.listarCargas(perfil.entregadorId);
-      for (const carga of cargas) {
-        itens.push({ carga, perfil });
-      }
-    }
-
-    itens.sort((a, b) => b.carga.criadaEm.localeCompare(a.carga.criadaEm));
-    return { perfis, itens };
-  }
-
   private async renderizarAdminCargas() {
     if (!this.usuarioAtual || this.usuarioAtual.tipo !== "ADMIN") return;
-    const { itens } = await this.obterTodasCargasAdmin();
-    this.raiz.innerHTML = telaAdminCargas(itens);
-
-    document.querySelector("#voltar-admin-cargas")?.addEventListener("click", () => this.renderizarAdminImportar());
-    document.querySelector("#nova-carga-manual")?.addEventListener("click", () => void this.renderizarNovaCargaManual());
-
-    document.querySelector<HTMLInputElement>("#buscar-pacote-admin")?.addEventListener("input", (evento) => {
-      const termo = (evento.currentTarget as HTMLInputElement).value.trim().toUpperCase();
-      document.querySelectorAll<HTMLElement>("[data-carga-busca]").forEach((card) => {
-        const conteudo = (card.dataset.cargaBusca ?? "").toUpperCase();
-        card.hidden = Boolean(termo) && !conteudo.includes(termo);
-      });
-    });
-
-    document.querySelectorAll<HTMLButtonElement>("[data-abrir-carga]").forEach((botao) => {
-      botao.addEventListener("click", () => {
-        const cargaId = botao.dataset.abrirCarga;
-        const entregadorId = botao.dataset.entregador;
-        if (!cargaId || !entregadorId) return;
-        void this.renderizarAdminCargaDetalhe(entregadorId, cargaId);
-      });
-    });
-  }
-
-  private async renderizarNovaCargaManual() {
-    if (!this.usuarioAtual || this.usuarioAtual.tipo !== "ADMIN") return;
-    const perfis = await this.dependencias.repositorioPerfis.listar();
-    this.raiz.innerHTML = telaNovaCargaManual(perfis, this.dataHojeLocal());
-
-    document.querySelector("#cancelar-nova-carga")?.addEventListener("click", () => void this.renderizarAdminCargas());
-    document.querySelector("#salvar-nova-carga")?.addEventListener("click", async () => {
-      const entregadorId = document.querySelector<HTMLSelectElement>("#nova-carga-entregador")?.value ?? "";
-      const data = document.querySelector<HTMLInputElement>("#nova-carga-data")?.value ?? "";
-      if (!entregadorId || !data) {
-        alert("Escolha o entregador e a data.");
-        return;
-      }
-
-      const perfil = await this.dependencias.repositorioPerfis.obter(entregadorId);
-      if (!perfil) return alert("Perfil nao encontrado.");
-
-      try {
-        const carga = criarCargaManual(perfil, data);
-        await this.dependencias.repositorioCargas.salvarCarga(entregadorId, carga);
-        await this.renderizarAdminCargaDetalhe(entregadorId, carga.cargaId);
-      } catch (erro) {
-        alert(erro instanceof Error ? erro.message : "Nao foi possivel criar a carga.");
-      }
-    });
-  }
-
-  private async renderizarAdminCargaDetalhe(entregadorId: string, cargaId: string) {
-    if (!this.usuarioAtual || this.usuarioAtual.tipo !== "ADMIN") return;
-    const cargas = await this.dependencias.repositorioCargas.listarCargas(entregadorId);
-    const carga = cargas.find((item) => item.cargaId === cargaId);
-    if (!carga) {
-      alert("Carga nao encontrada.");
-      return this.renderizarAdminCargas();
-    }
-
-    const perfis = await this.dependencias.repositorioPerfis.listar();
-    this.raiz.innerHTML = telaAdminCargaDetalhe(carga, perfis);
-
-    document.querySelector("#voltar-lista-cargas")?.addEventListener("click", () => void this.renderizarAdminCargas());
-
-    const salvar = async (item: CargaEntregador) => {
-      await this.dependencias.repositorioCargas.salvarCarga(item.entregadorId, item);
-    };
-
-    document.querySelector("#adicionar-pacote-manual")?.addEventListener("click", async () => {
-      const input = document.querySelector<HTMLInputElement>("#codigo-pacote-manual");
-      const codigo = input?.value ?? "";
-      const endereco = document.querySelector<HTMLInputElement>("#endereco-pacote-manual")?.value ?? "";
-      try {
-        const todas = await this.obterTodasCargasAdmin();
-        const normalizado = criarPacoteManual(codigo, carga.nomeEntregador, endereco);
-        const duplicado = todas.itens.some(({ carga: outra }) =>
-          (outra.status ?? "PUBLICADA") !== "ENCERRADA" &&
-          outra.dataOperacao === carga.dataOperacao &&
-          outra.pacotes.some((pacote) => pacote.codigoNormalizado === normalizado.codigoNormalizado)
-        );
-
-        if (duplicado) {
-          throw new Error("Este codigo ja pertence a outra carga ativa nesta data. Use TRANSFERIR em vez de duplicar.");
-        }
-
-        adicionarPacoteNaCarga(carga, normalizado);
-        await salvar(carga);
-        await this.renderizarAdminCargaDetalhe(entregadorId, cargaId);
-      } catch (erro) {
-        alert(erro instanceof Error ? erro.message : "Nao foi possivel adicionar.");
-      }
-    });
-
-    document.querySelector<HTMLInputElement>("#codigo-pacote-manual")?.addEventListener("keydown", (evento) => {
-      if (evento.key === "Enter") {
-        evento.preventDefault();
-        (document.querySelector("#adicionar-pacote-manual") as HTMLButtonElement | null)?.click();
-      }
-    });
-
-
-    document.querySelector<HTMLInputElement>("#arquivo-enderecos")?.addEventListener("change", async (evento) => {
-      const arquivo = (evento.currentTarget as HTMLInputElement).files?.[0];
-      if (!arquivo) return;
-      try {
-        document.body.dataset.carregando = "true";
-        const registros = await this.dependencias.leitorEnderecos.ler(arquivo);
-        const resultado = associarEnderecosNaCarga(carga, registros);
-        await salvar(carga);
-        alert(`Enderecos atualizados: ${resultado.atualizados}. Nao encontrados: ${resultado.naoEncontrados.length}. Duplicados: ${resultado.duplicadosNaCarga.length}.`);
-        await this.renderizarAdminCargaDetalhe(entregadorId, cargaId);
-      } catch (erro) {
-        alert(erro instanceof Error ? erro.message : "Nao foi possivel importar os enderecos.");
-      } finally {
-        document.body.dataset.carregando = "false";
-      }
-    });
-
-    document.querySelectorAll<HTMLButtonElement>("[data-editar-localizacao]").forEach((botao) => {
-      botao.addEventListener("click", () => {
-        const pacoteId = botao.dataset.editarLocalizacao;
-        const pacote = carga.pacotes.find((item) => item.id === pacoteId);
-        if (!pacote) return;
-        this.raiz.innerHTML = telaAdminLocalizacaoPacote(pacote);
-
-        const select = document.querySelector<HTMLSelectElement>("#localizacao-regiao");
-        const campoPersonalizado = document.querySelector<HTMLElement>("#campo-regiao-personalizada");
-        select?.addEventListener("change", () => {
-          campoPersonalizado?.classList.toggle("campo-grande--oculto", select.value !== "OUTRA");
-        });
-
-        document.querySelector("#cancelar-localizacao")?.addEventListener("click", () => void this.renderizarAdminCargaDetalhe(entregadorId, cargaId));
-        document.querySelector("#salvar-localizacao")?.addEventListener("click", async () => {
-          const endereco = document.querySelector<HTMLTextAreaElement>("#localizacao-endereco")?.value ?? "";
-          const escolha = select?.value ?? "AUTO";
-          const personalizada = document.querySelector<HTMLInputElement>("#localizacao-regiao-personalizada")?.value ?? "";
-          try {
-            definirLocalizacaoPacote(pacote, {
-              endereco,
-              regiaoId: escolha !== "AUTO" && escolha !== "OUTRA" ? escolha : undefined,
-              regiaoPersonalizada: escolha === "OUTRA" ? personalizada : undefined,
-              origemRegiao: "MANUAL",
-            });
-            await salvar(carga);
-            await this.renderizarAdminCargaDetalhe(entregadorId, cargaId);
-          } catch (erro) {
-            alert(erro instanceof Error ? erro.message : "Nao foi possivel salvar a localizacao.");
-          }
-        });
-      });
-    });
-
-    const atualizarQuantidadeSelecionados = () => {
-      const quantidade = document.querySelectorAll<HTMLInputElement>("[data-selecionar-pacote]:checked").length;
-      const elemento = document.querySelector("#quantidade-selecionados");
-      if (elemento) elemento.textContent = String(quantidade);
-    };
-
-    document.querySelectorAll<HTMLInputElement>("[data-selecionar-pacote]").forEach((checkbox) => {
-      checkbox.addEventListener("change", atualizarQuantidadeSelecionados);
-    });
-
-    const aplicarFiltrosPacotes = () => {
-      const termo = document.querySelector<HTMLInputElement>("#filtro-pacotes-carga")?.value.trim().toUpperCase() ?? "";
-      const regiao = document.querySelector<HTMLSelectElement>("#filtro-regiao-carga")?.value ?? "TODAS";
-      document.querySelectorAll<HTMLElement>("[data-pacote-codigo]").forEach((card) => {
-        const bateCodigo = !termo || (card.dataset.pacoteCodigo ?? "").toUpperCase().includes(termo);
-        const bateRegiao = regiao === "TODAS" || card.dataset.pacoteRegiao === regiao;
-        card.hidden = !(bateCodigo && bateRegiao);
-      });
-    };
-
-    document.querySelector<HTMLInputElement>("#filtro-pacotes-carga")?.addEventListener("input", aplicarFiltrosPacotes);
-    document.querySelector<HTMLSelectElement>("#filtro-regiao-carga")?.addEventListener("change", aplicarFiltrosPacotes);
-
-    document.querySelectorAll<HTMLButtonElement>("[data-filtrar-regiao-card]").forEach((botao) => {
-      botao.addEventListener("click", () => {
-        const regiao = botao.dataset.filtrarRegiaoCard ?? "TODAS";
-        const selectRegiao = document.querySelector<HTMLSelectElement>("#filtro-regiao-carga");
-        if (selectRegiao) selectRegiao.value = regiao;
-        aplicarFiltrosPacotes();
-        document.querySelector("#lista-pacotes-admin")?.scrollIntoView({ behavior: "smooth", block: "start" });
-      });
-    });
-
-    document.querySelector("#selecionar-regiao-visivel")?.addEventListener("click", () => {
-      document.querySelectorAll<HTMLElement>("[data-pacote-codigo]").forEach((card) => {
-        if (card.hidden) return;
-        const checkbox = card.querySelector<HTMLInputElement>("[data-selecionar-pacote]");
-        if (checkbox) checkbox.checked = true;
-      });
-      atualizarQuantidadeSelecionados();
-    });
-
-    document.querySelector("#limpar-selecao")?.addEventListener("click", () => {
-      document.querySelectorAll<HTMLInputElement>("[data-selecionar-pacote]").forEach((checkbox) => { checkbox.checked = false; });
-      atualizarQuantidadeSelecionados();
-    });
-
-    document.querySelector<HTMLSelectElement>("#regiao-lote")?.addEventListener("change", (evento) => {
-      const valor = (evento.currentTarget as HTMLSelectElement).value;
-      document.querySelector<HTMLInputElement>("#regiao-lote-personalizada")?.classList.toggle("input-mini--oculto", valor !== "OUTRA");
-    });
-
-    document.querySelector("#aplicar-regiao-lote")?.addEventListener("click", async () => {
-      const ids = [...document.querySelectorAll<HTMLInputElement>("[data-selecionar-pacote]:checked")].map((item) => item.dataset.selecionarPacote ?? "").filter(Boolean);
-      if (!ids.length) return alert("Selecione pelo menos uma encomenda.");
-      const escolha = document.querySelector<HTMLSelectElement>("#regiao-lote")?.value ?? "";
-      if (!escolha) return alert("Escolha a regiao que sera aplicada.");
-      const personalizada = document.querySelector<HTMLInputElement>("#regiao-lote-personalizada")?.value ?? "";
-      if (escolha === "OUTRA" && !personalizada.trim()) return alert("Informe o nome da regiao.");
-
-      const alterados = definirRegiaoEmLote(
-        carga.pacotes,
-        ids,
-        escolha === "OUTRA" ? undefined : escolha,
-        escolha === "OUTRA" ? personalizada : undefined,
-      );
-      await salvar(carga);
-      alert(`${alterados} encomenda(s) atualizada(s).`);
-      await this.renderizarAdminCargaDetalhe(entregadorId, cargaId);
-    });
-
-    document.querySelector("#transferir-selecionados")?.addEventListener("click", async () => {
-      const ids = [...document.querySelectorAll<HTMLInputElement>("[data-selecionar-pacote]:checked")].map((item) => item.dataset.selecionarPacote ?? "").filter(Boolean);
-      const destinoId = document.querySelector<HTMLSelectElement>("#destino-transferencia-selecao")?.value ?? "";
-      if (!ids.length) return alert("Selecione pelo menos uma encomenda.");
-      if (!destinoId) return alert("Escolha o entregador de destino.");
-
-      try {
-        const perfilDestino = await this.dependencias.repositorioPerfis.obter(destinoId);
-        if (!perfilDestino) throw new Error("Perfil de destino nao encontrado.");
-        const cargasDestino = await this.dependencias.repositorioCargas.listarCargas(destinoId);
-        let destino = cargasDestino.find((item) => item.dataOperacao === carga.dataOperacao && (item.status ?? "PUBLICADA") !== "ENCERRADA");
-        if (!destino) {
-          destino = criarCargaManual(perfilDestino, carga.dataOperacao);
-          destino.status = "PUBLICADA";
-          destino.publicadaEm = new Date().toISOString();
-        }
-
-        if (!confirm(`Transferir ${ids.length} encomenda(s) selecionada(s) para ${perfilDestino.nomeOficial}?`)) return;
-        const resultado = transferirPacotesSelecionados(carga, destino, ids);
-        await salvar(carga);
-        await salvar(destino);
-        alert(`Transferidos: ${resultado.movidos}. Bloqueados: ${resultado.bloqueados}. Duplicados no destino: ${resultado.duplicadosDestino}.`);
-        await this.renderizarAdminCargaDetalhe(entregadorId, cargaId);
-      } catch (erro) {
-        alert(erro instanceof Error ? erro.message : "Nao foi possivel transferir a selecao.");
-      }
-    });
-
-    document.querySelectorAll<HTMLButtonElement>("[data-excluir-pacote]").forEach((botao) => {
-      botao.addEventListener("click", async () => {
-        const pacoteId = botao.dataset.excluirPacote;
-        if (!pacoteId) return;
-        if (!confirm("Excluir esta encomenda da carga?")) return;
-        try {
-          excluirPacoteDaCarga(carga, pacoteId);
-          await salvar(carga);
-          await this.renderizarAdminCargaDetalhe(entregadorId, cargaId);
-        } catch (erro) {
-          alert(erro instanceof Error ? erro.message : "Nao foi possivel excluir.");
-        }
-      });
-    });
-
-    document.querySelectorAll<HTMLButtonElement>("[data-transferir-pacote]").forEach((botao) => {
-      botao.addEventListener("click", async () => {
-        const pacoteId = botao.dataset.transferirPacote;
-        if (!pacoteId) return;
-        const seletor = document.querySelector<HTMLSelectElement>(`[data-destino-pacote="${CSS.escape(pacoteId)}"]`);
-        const destinoId = seletor?.value;
-        if (!destinoId) return alert("Escolha o entregador de destino.");
-
-        try {
-          const perfilDestino = await this.dependencias.repositorioPerfis.obter(destinoId);
-          if (!perfilDestino) throw new Error("Perfil de destino nao encontrado.");
-
-          let cargasDestino = await this.dependencias.repositorioCargas.listarCargas(destinoId);
-          let destino = cargasDestino.find((item) =>
-            item.dataOperacao === carga.dataOperacao &&
-            (item.status ?? "PUBLICADA") !== "ENCERRADA"
-          );
-
-          if (!destino) {
-            destino = criarCargaManual(perfilDestino, carga.dataOperacao);
-            destino.status = "PUBLICADA";
-            destino.publicadaEm = new Date().toISOString();
-          }
-
-          transferirPacote(carga, destino, pacoteId);
-          await salvar(carga);
-          await salvar(destino);
-          await this.renderizarAdminCargaDetalhe(entregadorId, cargaId);
-        } catch (erro) {
-          alert(erro instanceof Error ? erro.message : "Nao foi possivel transferir.");
-        }
-      });
-    });
-
-    document.querySelector("#transferir-pendentes")?.addEventListener("click", async () => {
-      const destinoId = document.querySelector<HTMLSelectElement>("#destino-transferencia-total")?.value;
-      if (!destinoId) return alert("Escolha o novo entregador.");
-
-      try {
-        const perfilDestino = await this.dependencias.repositorioPerfis.obter(destinoId);
-        if (!perfilDestino) throw new Error("Perfil de destino nao encontrado.");
-
-        const cargasDestino = await this.dependencias.repositorioCargas.listarCargas(destinoId);
-        let destino = cargasDestino.find((item) =>
-          item.dataOperacao === carga.dataOperacao &&
-          (item.status ?? "PUBLICADA") !== "ENCERRADA"
-        );
-
-        if (!destino) {
-          destino = criarCargaManual(perfilDestino, carga.dataOperacao);
-          destino.status = "PUBLICADA";
-          destino.publicadaEm = new Date().toISOString();
-        }
-
-        const pendentes = carga.pacotes.filter((pacote) => obterEstadoEntrega(pacote).estadoFisico === "PENDENTE").length;
-        if (!pendentes) throw new Error("Nao existem pacotes pendentes para transferir.");
-
-        if (!confirm(`Transferir ate ${pendentes} pacote(s) pendente(s) para ${perfilDestino.nomeOficial}?`)) return;
-
-        const movidos = transferirPendentes(carga, destino);
-        await salvar(carga);
-        await salvar(destino);
-        alert(`${movidos} pacote(s) transferido(s).`);
-        await this.renderizarAdminCargaDetalhe(entregadorId, cargaId);
-      } catch (erro) {
-        alert(erro instanceof Error ? erro.message : "Nao foi possivel transferir a carga.");
-      }
-    });
-
-    document.querySelector("#publicar-carga")?.addEventListener("click", async () => {
-      try {
-        publicarCarga(carga);
-        await salvar(carga);
-        await this.renderizarAdminCargaDetalhe(entregadorId, cargaId);
-      } catch (erro) {
-        alert(erro instanceof Error ? erro.message : "Nao foi possivel publicar.");
-      }
-    });
-
-    document.querySelector("#encerrar-carga")?.addEventListener("click", async () => {
-      if (!confirm("Encerrar esta carga? Depois disso ela nao podera ser alterada.")) return;
-      try {
-        encerrarCarga(carga);
-        await salvar(carga);
-        await this.renderizarAdminCargaDetalhe(entregadorId, cargaId);
-      } catch (erro) {
-        alert(erro instanceof Error ? erro.message : "Nao foi possivel encerrar.");
-      }
-    });
+    await this.controladorAdminCargas.mostrarLista();
   }
 
 
@@ -844,22 +442,18 @@ export class AplicacaoDeliveryHub {
     this.raiz.innerHTML = telaEntregador(this.cargaEntregador);
     this.ligarSair();
 
-    document.querySelector("#abrir-scanner")?.addEventListener("click", () => this.renderizarScanner());
+    selecionar(this.raiz, "#abrir-scanner")?.addEventListener("click", () => this.renderizarScanner());
+    selecionar(this.raiz, "#atualizar-carga")?.addEventListener("click", () => void this.carregarCargaEntregador());
+    const conteudoEntregador = selecionar<HTMLElement>(this.raiz, "main");
 
-    document.querySelector("#atualizar-carga")?.addEventListener("click", () => void this.carregarCargaEntregador());
-    document.querySelectorAll<HTMLButtonElement>("[data-abrir-regiao]").forEach((botao) => {
-      botao.addEventListener("click", () => {
-        const regiaoId = botao.dataset.abrirRegiao;
-        if (regiaoId) this.renderizarEntregadorRegiao(regiaoId);
-      });
+    if (conteudoEntregador) delegarEvento(conteudoEntregador, "click", "[data-abrir-regiao]", (botao) => {
+      const regiaoId = botao.dataset.abrirRegiao;
+      if (regiaoId) this.renderizarEntregadorRegiao(regiaoId);
     });
-    document.querySelectorAll<HTMLButtonElement>("[data-abrir-pacote]").forEach((botao) => {
-      botao.addEventListener("click", () => {
-        const pacote = this.cargaEntregador?.pacotes.find((item) => item.id === botao.dataset.abrirPacote);
-        if (!pacote) return;
-        this.pacoteAtual = pacote;
-        this.renderizarPacoteEncontrado();
-      });
+
+    if (conteudoEntregador) delegarEvento(conteudoEntregador, "click", "[data-abrir-pacote]", (botao) => {
+      const pacote = this.cargaEntregador?.pacotes.find((item) => item.id === botao.dataset.abrirPacote);
+      if (pacote) this.abrirFluxoEntrega(pacote);
     });
   }
 
@@ -867,16 +461,14 @@ export class AplicacaoDeliveryHub {
   private renderizarEntregadorRegiao(regiaoId: string) {
     if (!this.cargaEntregador) return;
     this.raiz.innerHTML = telaEntregadorRegiao(this.cargaEntregador, regiaoId);
-    document.querySelector("#voltar-regioes-entregador")?.addEventListener("click", () => this.renderizarEntregador());
-    document.querySelectorAll<HTMLButtonElement>("[data-abrir-pacote-regiao]").forEach((botao) => {
-      botao.addEventListener("click", () => {
-        const pacote = this.cargaEntregador?.pacotes.find((item) => item.id === botao.dataset.abrirPacoteRegiao);
-        if (!pacote) return;
-        this.pacoteAtual = pacote;
-        this.renderizarPacoteEncontrado();
-      });
+    selecionar(this.raiz, "#voltar-regioes-entregador")?.addEventListener("click", () => this.renderizarEntregador());
+    const conteudoRegiao = selecionar<HTMLElement>(this.raiz, "main");
+    if (conteudoRegiao) delegarEvento(conteudoRegiao, "click", "[data-abrir-pacote-regiao]", (botao) => {
+      const pacote = this.cargaEntregador?.pacotes.find((item) => item.id === botao.dataset.abrirPacoteRegiao);
+      if (pacote) this.abrirFluxoEntrega(pacote);
     });
   }
+
 
   private async salvarCargaEntregador() {
     if (!this.cargaEntregador) return;
@@ -891,13 +483,12 @@ export class AplicacaoDeliveryHub {
       mensagem,
     );
 
-    const input = document.querySelector<HTMLInputElement>("#codigo-scanner");
-    const foto = document.querySelector<HTMLInputElement>("#foto-scanner");
-    const status = document.querySelector<HTMLElement>("#status-scanner-foto");
+    const input = selecionar<HTMLInputElement>(this.raiz, "#codigo-scanner");
+    const foto = selecionar<HTMLInputElement>(this.raiz, "#foto-scanner");
+    const status = selecionar<HTMLElement>(this.raiz, "#status-scanner-foto");
 
     const abrirPacote = (pacote: PacoteDaCarga) => {
-      this.pacoteAtual = pacote;
-      this.renderizarPacoteEncontrado();
+      this.abrirFluxoEntrega(pacote);
     };
 
     const procurarManual = () => {
@@ -953,165 +544,33 @@ export class AplicacaoDeliveryHub {
       }
     });
 
-    document
-      .querySelector("#procurar-pacote")
-      ?.addEventListener("click", procurarManual);
+    selecionar(this.raiz, "#procurar-pacote")?.addEventListener("click", procurarManual);
 
     input?.addEventListener("keydown", (evento) => {
       if (evento.key === "Enter") procurarManual();
     });
 
-    document
-      .querySelector("#voltar-entregador")
-      ?.addEventListener("click", () => this.renderizarEntregador());
+    selecionar(this.raiz, "#voltar-entregador")?.addEventListener("click", () => this.renderizarEntregador());
   }
 
-  private renderizarPacoteEncontrado() {
-    if (!this.pacoteAtual) return;
-    this.raiz.innerHTML = telaPacoteEncontrado(this.pacoteAtual);
-    document.querySelector("#voltar-scanner")?.addEventListener("click", () => { this.pacoteAtual = null; this.renderizarScanner(); });
-    document.querySelector("#iniciar-entrega")?.addEventListener("click", async () => {
-      if (!this.pacoteAtual) return;
-      iniciarEntrega(this.pacoteAtual);
-      await this.salvarCargaEntregador();
-      this.telaEntregaAtual = "FOTOS";
-      this.renderizarFluxoEntrega();
-    });
-    document.querySelector("#desfazer-conclusao")?.addEventListener("click", async () => {
-      if (!this.pacoteAtual) return;
-      try { desfazerUltimaConclusao(this.pacoteAtual); await this.salvarCargaEntregador(); this.renderizarPacoteEncontrado(); }
-      catch (erro) { alert(erro instanceof Error ? erro.message : "Nao foi possivel desfazer."); }
-    });
+  private abrirFluxoEntrega(pacote: PacoteDaCarga) {
+    this.controladorFluxoEntrega = new ControladorFluxoEntrega(
+      this.raiz,
+      this.dependencias,
+      pacote,
+      () => this.salvarCargaEntregador(),
+      {
+        voltarScanner: () => {
+          this.controladorFluxoEntrega = null;
+          this.renderizarScanner();
+        },
+        voltarEntregador: () => {
+          this.controladorFluxoEntrega = null;
+          this.renderizarEntregador();
+        },
+      },
+    );
+    this.controladorFluxoEntrega.mostrarPacoteEncontrado();
   }
 
-  private renderizarFluxoEntrega() {
-    if (!this.pacoteAtual) return;
-    if (this.telaEntregaAtual === "FOTOS") { this.raiz.innerHTML = telaFotosEntrega(this.pacoteAtual); this.ligarTelaFotos(); return; }
-    if (this.telaEntregaAtual === "RECEBEDOR") { this.raiz.innerHTML = telaRecebedor(this.pacoteAtual); this.ligarTelaRecebedor(); return; }
-    this.raiz.innerHTML = telaFinalizarEntrega(this.pacoteAtual); this.ligarTelaFinalizar();
-  }
-
-  private ligarTelaFotos() {
-    document.querySelectorAll<HTMLInputElement>("[data-foto-tipo]").forEach((input) => {
-      input.addEventListener("change", async () => {
-        const arquivo = input.files?.[0];
-        const tipo = input.dataset.fotoTipo as TipoEvidenciaFoto | undefined;
-        if (!arquivo || !tipo || !this.pacoteAtual) return;
-        try {
-          document.body.dataset.carregando = "true";
-          const salvo = await this.dependencias.repositorioFotos.salvar(arquivo);
-          const anterior = adicionarFoto(this.pacoteAtual, { id: crypto.randomUUID(), tipo, chaveArquivo: salvo.chave, capturadaEm: new Date().toISOString(), tamanhoBytes: salvo.tamanhoBytes });
-          if (anterior) await this.dependencias.repositorioFotos.remover(anterior);
-          await this.salvarCargaEntregador();
-          this.renderizarFluxoEntrega();
-        } catch (erro) { alert(erro instanceof Error ? erro.message : "Falha ao salvar foto."); }
-        finally { document.body.dataset.carregando = "false"; }
-      });
-    });
-    document.querySelectorAll<HTMLButtonElement>("[data-remover-foto]").forEach((botao) => {
-      botao.addEventListener("click", async () => {
-        if (!this.pacoteAtual) return;
-        const chave = removerFoto(this.pacoteAtual, botao.dataset.removerFoto as TipoEvidenciaFoto);
-        if (chave) await this.dependencias.repositorioFotos.remover(chave);
-        await this.salvarCargaEntregador();
-        this.renderizarFluxoEntrega();
-      });
-    });
-    document.querySelector("#ir-recebedor")?.addEventListener("click", () => { this.telaEntregaAtual = "RECEBEDOR"; this.renderizarFluxoEntrega(); });
-    document.querySelector("#opcoes-entrega")?.addEventListener("click", () => this.renderizarOpcoesEntrega());
-  }
-
-  private ligarTelaRecebedor() {
-    const campoNome = document.querySelector<HTMLElement>("#campo-nome-recebedor");
-    const campoDocumento = document.querySelector<HTMLElement>("#campo-documento-recebedor");
-    const inputNome = document.querySelector<HTMLInputElement>("#nome-recebedor");
-    const inputDocumento = document.querySelector<HTMLInputElement>("#documento-recebedor");
-    let tipoSelecionado = obterEstadoEntrega(this.pacoteAtual!).recebedor?.tipo;
-
-    const salvarRecebedor = async () => {
-      if (!this.pacoteAtual || !tipoSelecionado) return;
-      definirRecebedor(this.pacoteAtual, {
-        tipo: tipoSelecionado,
-        nome:
-          tipoSelecionado === "PROPRIO"
-            ? undefined
-            : inputNome?.value.trim() || undefined,
-        documento: inputDocumento?.value.trim() || undefined,
-      });
-      await this.salvarCargaEntregador();
-    };
-
-    document.querySelectorAll<HTMLButtonElement>("[data-recebedor]").forEach((botao) => {
-      botao.addEventListener("click", async () => {
-        if (!this.pacoteAtual) return;
-        tipoSelecionado = botao.dataset.recebedor as TipoRecebedor;
-        document.querySelectorAll<HTMLButtonElement>("[data-recebedor]").forEach((item) => { item.dataset.selecionado = String(item === botao); });
-        campoNome?.classList.toggle("campo-grande--oculto", tipoSelecionado === "PROPRIO");
-        campoDocumento?.classList.remove("campo-grande--oculto");
-        await salvarRecebedor();
-        const proximo = document.querySelector<HTMLButtonElement>("#ir-finalizar"); if (proximo) proximo.disabled = false;
-      });
-    });
-
-    inputNome?.addEventListener("input", async () => {
-      if (!tipoSelecionado || tipoSelecionado === "PROPRIO") return;
-      await salvarRecebedor();
-    });
-
-    inputDocumento?.addEventListener("input", async () => {
-      if (!tipoSelecionado) return;
-      await salvarRecebedor();
-    });
-
-    document.querySelector("#voltar-fotos")?.addEventListener("click", () => { this.telaEntregaAtual = "FOTOS"; this.renderizarFluxoEntrega(); });
-    document.querySelector("#ir-finalizar")?.addEventListener("click", () => { if (!this.pacoteAtual || !obterEstadoEntrega(this.pacoteAtual).recebedor) return; this.telaEntregaAtual = "FINALIZAR"; this.renderizarFluxoEntrega(); });
-  }
-
-  private ligarTelaFinalizar() {
-    document.querySelector("#voltar-recebedor")?.addEventListener("click", () => { this.telaEntregaAtual = "RECEBEDOR"; this.renderizarFluxoEntrega(); });
-    document.querySelector("#confirmar-entrega")?.addEventListener("click", async () => {
-      if (!this.pacoteAtual) return;
-      try { confirmarEntrega(this.pacoteAtual); await this.salvarCargaEntregador(); this.renderizarResultadoEntrega(); }
-      catch (erro) { alert(erro instanceof Error ? erro.message : "Nao foi possivel concluir."); }
-    });
-    document.querySelector("#abrir-nao-entregue")?.addEventListener("click", () => { if (!this.pacoteAtual) return; this.raiz.innerHTML = telaNaoEntregue(this.pacoteAtual); this.ligarTelaNaoEntregue(); });
-    document.querySelector("#opcoes-entrega")?.addEventListener("click", () => this.renderizarOpcoesEntrega());
-  }
-
-  private ligarTelaNaoEntregue() {
-    document.querySelectorAll<HTMLButtonElement>("[data-motivo]").forEach((botao) => {
-      botao.addEventListener("click", async () => {
-        if (!this.pacoteAtual) return;
-        marcarNaoEntregue(this.pacoteAtual, botao.dataset.motivo as MotivoNaoEntrega);
-        await this.salvarCargaEntregador();
-        this.renderizarResultadoEntrega();
-      });
-    });
-    document.querySelector("#voltar-finalizar")?.addEventListener("click", () => { this.telaEntregaAtual = "FINALIZAR"; this.renderizarFluxoEntrega(); });
-  }
-
-  private renderizarOpcoesEntrega() {
-    if (!this.pacoteAtual) return;
-    this.raiz.innerHTML = telaOpcoesEntrega(this.pacoteAtual);
-    document.querySelector("#pausar-entrega")?.addEventListener("click", async () => { if (!this.pacoteAtual) return; pausarEntrega(this.pacoteAtual); await this.salvarCargaEntregador(); this.pacoteAtual = null; this.renderizarEntregador(); });
-    document.querySelector("#cancelar-preparacao")?.addEventListener("click", async () => {
-      if (!this.pacoteAtual || !confirm("Cancelar a preparacao e apagar as fotos registradas deste pacote?")) return;
-      try {
-        const arquivos = cancelarPreparacao(this.pacoteAtual); for (const chave of arquivos) await this.dependencias.repositorioFotos.remover(chave);
-        await this.salvarCargaEntregador(); this.pacoteAtual = null; this.renderizarScanner();
-      } catch (erro) { alert(erro instanceof Error ? erro.message : "Nao foi possivel cancelar."); }
-    });
-    document.querySelector("#voltar-operacao")?.addEventListener("click", () => this.renderizarFluxoEntrega());
-  }
-
-  private renderizarResultadoEntrega() {
-    if (!this.pacoteAtual) return;
-    this.raiz.innerHTML = telaResultadoEntrega(this.pacoteAtual);
-    document.querySelector("#desfazer-conclusao")?.addEventListener("click", async () => {
-      if (!this.pacoteAtual) return;
-      try { desfazerUltimaConclusao(this.pacoteAtual); await this.salvarCargaEntregador(); this.telaEntregaAtual = "FINALIZAR"; this.renderizarFluxoEntrega(); }
-      catch (erro) { alert(erro instanceof Error ? erro.message : "Nao foi possivel desfazer."); }
-    });
-    document.querySelector("#proximo-pacote")?.addEventListener("click", () => { this.pacoteAtual = null; this.renderizarScanner(); });
-  }
 }

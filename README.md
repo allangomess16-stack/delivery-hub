@@ -218,3 +218,17 @@ Para esta e as proximas versoes, use sempre o ZIP completo em uma pasta nova. O
 `BAT\GITHUB\07_GERAR_APK_HOMOLOGACAO.bat` adota o historico atual do GitHub
 antes de criar o commit da nova versao, evitando reconstruir o historico remoto.
 
+## V0.3.9 — reenquadramento antes da próxima expansão
+
+A V0.3.8 foi homologada no Android. A V0.3.9 reorganiza a camada de interface sem alterar o comportamento aprovado do scanner e do recebedor.
+
+Principais limites arquiteturais a partir desta versão:
+
+- estado visual não é sincronizado;
+- fluxos com ciclo de vida próprio devem usar controladores;
+- listas devem preferir delegação de eventos;
+- alterações localizadas devem evitar reconstrução integral da tela;
+- `app.ts` permanece como orquestrador, não como depósito de regras de tela.
+
+Detalhes: `docs/V0.3.9_REENQUADRAMENTO_INTERFACE.md`.
+
