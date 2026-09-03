@@ -19,7 +19,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: npm
 
       - name: Configurar Java
         uses: actions/setup-java@v4
@@ -30,7 +29,14 @@ jobs:
       - name: Instalar dependencias
         run: npm install --no-audit --no-fund
 
+      - name: Ler versao
+        id: versao
+        shell: bash
+        run: |
+          echo "numero=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+
       - name: Habilitar modo homologacao
+        shell: bash
         run: |
           cat > public/homologacao-config.json <<'EOF'
           {
@@ -46,11 +52,6 @@ jobs:
 
       - name: Gerar build web
         run: npm run build
-
-      - name: Preparar Android SDK
-        run: |
-          yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
       - name: Criar projeto Android
         run: npx cap add android
@@ -68,17 +69,18 @@ jobs:
           ./gradlew --no-daemon assembleDebug
 
       - name: Preparar artefato
+        shell: bash
         run: |
           mkdir -p APK
           cp android/app/build/outputs/apk/debug/app-debug.apk \
-             APK/DeliveryHub-Homologacao-v0.3.3.apk
-          sha256sum APK/DeliveryHub-Homologacao-v0.3.3.apk \
-             > APK/DeliveryHub-Homologacao-v0.3.3.sha256.txt
+             "APK/DeliveryHub-Homologacao-v${{ steps.versao.outputs.numero }}.apk"
+          sha256sum "APK/DeliveryHub-Homologacao-v${{ steps.versao.outputs.numero }}.apk" \
+             > "APK/DeliveryHub-Homologacao-v${{ steps.versao.outputs.numero }}.sha256.txt"
 
       - name: Disponibilizar APK
         uses: actions/upload-artifact@v4
         with:
-          name: DeliveryHub-Homologacao-v0.3.3
+          name: DeliveryHub-Homologacao
           path: APK/
           if-no-files-found: error
           retention-days: 30
