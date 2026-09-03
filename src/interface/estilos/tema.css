@@ -1,0 +1,32 @@
+/*
+ * ================================================================
+ *  DELIVERY HUB - CORES PRINCIPAIS
+ * ================================================================
+ * Para trocar a aparencia do sistema, altere primeiro ESTE ARQUIVO.
+ * As telas usam estas variaveis para evitar cores espalhadas no codigo.
+ */
+:root {
+  --fundo: #080b10;
+  --painel: #0e141c;
+  --painel-2: #131b25;
+  --painel-3: #18222e;
+
+  --texto: #f7f9fc;
+  --texto-secundario: #bac5d3;
+  --texto-suave: #8090a3;
+
+  --primaria: #22c7ff;
+  --sucesso: #37e27d;
+  --atencao: #ffbd3d;
+  --perigo: #ff5666;
+
+  --borda: #2b3a4e;
+  --borda-forte: #3b4c63;
+
+  --raio-pequeno: 10px;
+  --raio-medio: 16px;
+  --raio-grande: 22px;
+
+  --altura-cabecalho: 72px;
+  --altura-rodape: 92px;
+}
