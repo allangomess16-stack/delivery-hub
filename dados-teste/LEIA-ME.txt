@@ -1,0 +1,6 @@
+Coloque aqui copias das planilhas operacionais XLSX somente para testes locais.
+
+Esta pasta ignora *.xlsx e *.xls no Git para evitar envio acidental de dados operacionais.
+
+Para validar por BAT:
+  scripts\windows\30_VALIDAR_PLANILHAS_REAIS.bat

@@ -1,0 +1,21 @@
+DELIVERY HUB - BATs DO PROJETO
+
+01_SERVIDOR_LOCAL.bat
+  Uso normal. Inicia o servidor compartilhado para PC e celular.
+
+02_PREPARAR_AMBIENTE.bat
+  Instala/verifica dependencias. Normalmente o 01 faz isso sozinho.
+
+03_VALIDAR_PROJETO.bat
+  Executa TypeScript, testes e build.
+
+04_CORRIGIR_ACESSO_CELULAR.bat
+  Libera a porta 5173 em rede privada e mostra diagnostico de rede.
+
+05_RESETAR_DADOS_TESTE.bat
+  Apaga somente a base local de desenvolvimento, com confirmacao.
+
+REGRA A PARTIR DA V0.2.9
+- Os nomes destes BATs sao permanentes.
+- Novas versoes substituem estes arquivos.
+- Nao criar TESTAR_Vxxx.bat ou VALIDAR_Vxxx.bat novamente.

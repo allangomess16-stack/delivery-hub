@@ -1,0 +1,28 @@
+DELIVERY HUB - ANDROID / TRANSPORTADORAS
+
+01_PREPARAR_ANDROID.bat
+  Gera/sincroniza a plataforma Capacitor Android e adiciona <queries>
+  para os packages confirmados por analise:
+    Anjun: com.anjun.supplierManagement
+    iMile: com.imile.redelivery
+
+02_DIAGNOSTICAR_APPS.bat
+  Com o celular via ADB:
+  - verifica se cada app esta instalado;
+  - mostra versionName/versionCode;
+  - resolve a Activity de abertura;
+  - mostra o caminho do APK.
+  Nao executa baixa.
+
+03_TESTAR_ABERTURA_APPS.bat
+  Abre somente o launcher do app escolhido.
+  Nao envia tracking, foto ou dados.
+
+04_EXTRAIR_APK_INSTALADO.bat
+  Extrai o base APK do aparelho para diagnosticos-apk/.
+  Essa pasta nao sobe ao GitHub.
+
+REGRA DE SEGURANCA
+  Activity interna, deep link, compartilhamento e automacao so entram no
+  fluxo operacional depois de ADB_VALIDATED -> DEVICE_VALIDATED ->
+  PRODUCTION_VALIDATED.
