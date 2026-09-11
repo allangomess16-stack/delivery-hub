@@ -1,0 +1,11 @@
+{
+  "habilitado": true,
+  "projectId": "projeto-teste",
+  "databaseURL": "https://projeto-teste-default-rtdb.firebaseio.com",
+  "databaseInstance": "projeto-teste-default-rtdb",
+  "firebase": {
+    "apiKey": "CHAVE_FICTICIA_PARA_TESTE",
+    "appId": "1:123456789:web:teste",
+    "projectId": "projeto-teste"
+  }
+}

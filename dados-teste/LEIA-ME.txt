@@ -1,0 +1,9 @@
+MODELO_CARGAS_DELIVERY_HUB.xlsx e o modelo oficial para montar a carga do dia.
+Cada coluna depois de Nº representa um entregador; a primeira aba e importada.
+
+Coloque aqui copias das planilhas operacionais XLSX somente para testes locais.
+
+Esta pasta ignora *.xlsx e *.xls no Git para evitar envio acidental de dados operacionais.
+
+Para validar pela linha de comando, na raiz do projeto:
+  npm run planilhas:validar -- dados-teste\NOME_DA_PLANILHA.xlsx

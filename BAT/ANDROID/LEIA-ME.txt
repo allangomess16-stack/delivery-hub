@@ -1,0 +1,103 @@
+DELIVERY HUB - ANDROID / TRANSPORTADORAS
+
+Use estes BATs somente com celular autorizado, ADB ativo e sem encomenda real
+quando o objetivo for homologacao ou pesquisa.
+
+01_PREPARAR_ANDROID.bat
+  Gera/sincroniza a plataforma Capacitor Android e adiciona <queries>
+  para os packages confirmados por analise:
+    Anjun: com.anjun.supplierManagement
+    iMile: com.imile.redelivery
+
+02_DIAGNOSTICAR_APPS.bat
+  Com o celular via ADB:
+  - verifica se cada app esta instalado;
+  - mostra versionName/versionCode;
+  - resolve a Activity de abertura;
+  - mostra o caminho do APK.
+  Nao executa baixa.
+
+03_TESTAR_ABERTURA_APPS.bat
+  Abre somente o launcher do app escolhido.
+  Nao envia tracking, foto ou dados.
+
+04_EXTRAIR_APK_INSTALADO.bat
+  Extrai o base APK do aparelho para diagnosticos-apk/.
+  Essa pasta nao sobe ao GitHub.
+
+REGRA DE SEGURANCA
+  Activity interna, deep link, compartilhamento e automacao so entram no
+  fluxo operacional depois de ADB_VALIDATED -> DEVICE_VALIDATED ->
+  PRODUCTION_VALIDATED.
+
+
+V0.4.2 - DIAGNOSTICO IMILE
+
+05_MAPEAR_IMILE_SCANNER.bat
+- abre explicitamente com.imile.redelivery/.MainActivity;
+- captura Activity/window antes e depois de abrir o scanner;
+- salva diagnosticos-apk/diagnostico-imile-scanner.txt;
+- salva hierarquia visual complementar em XML;
+- nao escaneia e nao confirma encomendas.
+
+Os BATs 02, 03 e 05 nao executam mais adb.exe diretamente dentro de FOR /F.
+Isso evita erros do cmd.exe quando o caminho do ADB possui espacos.
+
+V0.4.6 - NAVEGACAO CONTEXTUAL IMILE
+
+06_HOMOLOGAR_DEEP_LINK_IMILE.bat
+- exige exatamente um aparelho conectado;
+- exige iMile 2.3.18 / versionCode 458;
+- envia somente DH_TESTE_INVALIDO;
+- abre crredelivery:?requestCode=DH_TESTE_INVALIDO de forma explicita;
+- nao pesquisa, altera ou confirma encomenda real;
+- exige conferencia visual antes de promover a capacidade.
+
+O acesso pelo navegador via BAT\01_SERVIDOR_LOCAL.bat nao substitui este teste Android nativo.
+
+V0.4.6.1 - OUTBOX OFFLINE DETERMINISTICA
+
+07_VALIDAR_OUTBOX_OFFLINE.bat
+- exige exatamente um aparelho conectado e o APK de homologacao instalado;
+- guia a ativacao do offline simulado dentro do app;
+- fecha e reabre somente com.deliveryhub.homologacao, sem limpar dados;
+- permite conferir fila 1 e o mesmo UUID apos a reinicializacao;
+- guia a volta online e a conferencia de fila 0 sem duplicidade;
+- nao modifica o scanner, a iMile nem qualquer entrega real.
+
+V0.4.9 - DIAGNOSTICO CONTROLADO DE ENCOMENDA REAL
+
+08_DIAGNOSTICAR_FLUXO_REAL_IMILE.bat
+- exige exatamente um aparelho autorizado e a iMile instalada;
+- acompanha antes do scan, iMile aberta e retorno ao Delivery Hub;
+- registra versoes, Activities, janela em foco e erros Android relevantes;
+- mascara tracking e codigos longos no relatorio;
+- nao captura tela, nome, endereco, foto, documento ou assinatura;
+- nao desinstala aplicativos e nao limpa dados;
+- deve ser interrompido antes de qualquer confirmacao de baixa/POD.
+
+O resultado fica em:
+  diagnosticos-apk\imile-real-AAAAMMDD-HHMMSS\
+
+09_GRAVAR_SESSAO_EXPLORATORIA_IMILE.bat
+- grava por ate 180 segundos todo o percurso visual feito manualmente;
+- registra Logcat, transicoes de Activity e estado inicial/final;
+- nao injeta toques, nao automatiza o fluxo e nao confirma baixas;
+- mascara dados reconheciveis nos logs de texto;
+- o video nao pode ser mascarado automaticamente e deve ser revisado;
+- pode ser executado novamente para registrar outro trecho de ate 3 minutos.
+
+O resultado fica em:
+  diagnosticos-apk\imile-sessao-AAAAMMDD-HHMMSS\
+
+V0.5.6 - DIAGNOSTICO CONTROLADO ANJUN NIVEL 1
+
+10_DIAGNOSTICAR_FLUXO_REAL_ANJUN.bat
+- exige exatamente um aparelho autorizado e a Anjun instalada;
+- lê uma etiqueta Anjun pelo Delivery Hub, copia o tracking e abre somente o launcher;
+- registra versões, Activities e as respostas guiadas do entregador;
+- não automatiza busca interna, baixa, POD, foto ou assinatura;
+- mascara trackings e códigos longos no relatório.
+
+O resultado fica em:
+  diagnosticos-apk\anjun-real-AAAAMMDD-HHMMSS\

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Delivery Hub Teste</string>
+    <string name="title_activity_main">Delivery Hub Teste</string>
+    <string name="package_name">com.deliveryhub.homologacao</string>
+    <string name="custom_url_scheme">com.deliveryhub.homologacao</string>
+</resources>

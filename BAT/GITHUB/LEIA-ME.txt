@@ -1,0 +1,39 @@
+DELIVERY HUB - GITHUB
+
+00_LOGIN_GITHUB.bat
+  Faz o login oficial da GitHub CLI neste computador.
+  O login conectado ao ChatGPT nao autentica a CLI local.
+  Use este BAT se aparecer mensagem de usuario nao autenticado.
+
+
+01_CONFIGURAR_REPOSITORIO.bat
+  Primeira execucao.
+  Instala/verifica GitHub CLI, autentica, inicializa Git,
+  cria o repositorio remoto, faz o primeiro push e cria a tag atual.
+
+02_SALVAR_TRABALHO.bat
+  Salva alteracoes intermediarias no GitHub sem criar uma nova versao/tag.
+
+03_PUBLICAR_VERSAO.bat
+  Use quando uma versao estiver aprovada.
+  Valida, publica main, cria tag vX.Y.Z e GitHub Release.
+
+04_STATUS.bat
+  Mostra branch, remote, alteracoes, commits e tags.
+
+05_ATUALIZAR_LOCAL.bat
+  Executa git pull --ff-only com protecao contra alteracoes locais.
+
+06_CRIAR_BRANCH.bat
+  Cria uma branch feature/<nome> quando uma mudanca maior precisar ser isolada.
+
+PADRAO
+  main = versoes aprovadas/estaveis
+  feature/* = desenvolvimento isolado quando necessario
+  vX.Y.Z = fotografia imutavel de cada versao aprovada
+
+07_GERAR_APK_HOMOLOGACAO.bat
+  Dispara o GitHub Actions para compilar o APK de homologacao.
+  Ao terminar, baixa o APK automaticamente para a pasta APK/.
+  Nao exige Android Studio/SDK local.
+
