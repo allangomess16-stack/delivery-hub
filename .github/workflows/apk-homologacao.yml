@@ -38,8 +38,7 @@ jobs:
       - name: Ler versao
         id: versao
         shell: bash
-        run: |
-          echo "numero=$(tr -d '\r\n' < VERSION)" >> "$GITHUB_OUTPUT"
+        run: echo "numero=$(tr -d '\r\n' < VERSION)" >> "$GITHUB_OUTPUT"
 
       - name: Habilitar modo homologacao
         shell: bash
@@ -60,13 +59,18 @@ jobs:
         run: npm run build
 
       - name: Criar projeto Android
-        run: npx cap add android
+        shell: bash
+        run: |
+          if [ -f android/app/src/main/AndroidManifest.xml ]; then
+            echo "Projeto Android versionado ja existe; reutilizando."
+          else
+            npx cap add android
+          fi
 
       - name: Sincronizar Capacitor
         run: npx cap sync android
 
       - name: Aplicar configuracao e NativeBridge Android
-        # Mantem a compilacao remota equivalente ao gerador local de APK e a ponte iMile.
         run: |
           npm run android:configurar
           node scripts/node/aplicar-identidade-apk-homologacao.mjs
