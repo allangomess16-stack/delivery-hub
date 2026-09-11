@@ -400,13 +400,31 @@ echo [9/9] Baixando APK...
 
 if not exist "%RAIZ%\APK" mkdir "%RAIZ%\APK"
 
+set "DOWNLOAD_TEMP=%TEMP%\deliveryhub-apk-download-!RUN_ID!"
+if exist "!DOWNLOAD_TEMP!" rmdir /s /q "!DOWNLOAD_TEMP!"
+mkdir "!DOWNLOAD_TEMP!"
+
 "%GH_EXE%" run download "!RUN_ID!" ^
   --repo "%REPO%" ^
   --name "DeliveryHub-Homologacao" ^
-  --dir "%RAIZ%\APK"
+  --dir "!DOWNLOAD_TEMP!"
 
 if errorlevel 1 (
+  if exist "!DOWNLOAD_TEMP!" rmdir /s /q "!DOWNLOAD_TEMP!"
   echo [ERRO] O build terminou, mas o APK nao foi baixado.
+  goto :FALHOU
+)
+
+set "APK_BAIXADO="
+for /r "!DOWNLOAD_TEMP!" %%F in (*.apk) do (
+  copy /Y "%%~fF" "%RAIZ%\APK\" >nul
+  set "APK_BAIXADO=1"
+)
+for /r "!DOWNLOAD_TEMP!" %%F in (*.sha256.txt) do copy /Y "%%~fF" "%RAIZ%\APK\" >nul
+if exist "!DOWNLOAD_TEMP!" rmdir /s /q "!DOWNLOAD_TEMP!"
+
+if not defined APK_BAIXADO (
+  echo [ERRO] O artefato foi baixado, mas nenhum APK foi encontrado.
   goto :FALHOU
 )
 
