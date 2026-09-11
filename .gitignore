@@ -51,4 +51,6 @@ fotos-entrega/
 diagnosticos-apk/
 *.apk
 .ferramentas/
-APK/
+APK/*.apk
+APK/*.apks
+APK/*.aab

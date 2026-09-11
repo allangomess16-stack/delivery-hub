@@ -1,0 +1,46 @@
+DELIVERY HUB - APK DE HOMOLOGACAO
+
+Objetivo:
+  gerar um APK para socio/avaliador testar no proprio Android.
+
+O APK:
+  - nao exige login;
+  - possui carga ficticia;
+  - permite fotografar uma etiqueta REAL;
+  - extrai barcode/QR;
+  - normaliza tracking;
+  - identifica J&T, Anjun ou iMile quando a regra for conhecida;
+  - pode simular o fluxo de entrega;
+  - NAO envia baixa para nenhuma transportadora;
+  - NAO consulta dados pessoais do destinatario;
+  - NAO descobre endereco somente pelo tracking.
+
+Primeiro uso:
+  01_GERAR_APK_HOMOLOGACAO.bat
+
+Se aparecer erro de adb.exe ausente:
+  Execute novamente 00_PREPARAR_SDK_ANDROID.bat. A V0.4.8.1 tenta reparar
+  automaticamente o Platform Tools por download direto. Se ainda falhar,
+  confira se o antivirus colocou adb.exe em quarentena.
+
+Piloto Admin + Firebase + entregador:
+  03_GERAR_APK_PILOTO_FIREBASE.bat
+
+Antes do piloto, execute:
+  BAT\FIREBASE\07_USAR_MODO_FIREBASE.bat
+
+Se o SDK Android nao existir, o BAT chama automaticamente:
+  00_PREPARAR_SDK_ANDROID.bat
+
+Saida esperada:
+  APK\DeliveryHub-Homologacao-v0.4.8.1.apk
+  ou
+  APK\DeliveryHub-Piloto-Firebase-v0.4.8.1.apk
+
+V0.4.7
+  Antes do Gradle, o gerador aplica o NativeBridge Android e registra o plugin
+  Capacitor. Isso permite o teste sintetico da iMile dentro do APK de homologacao.
+  A Outbox possui modo offline controlado e persistente para o teste no aparelho.
+  O APK piloto usa login e o mesmo backend Firebase do Admin no computador.
+
+Para uso sem APK no PC/celular, utilize BAT\01_SERVIDOR_LOCAL.bat.

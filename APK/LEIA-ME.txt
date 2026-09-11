@@ -1,0 +1,24 @@
+DELIVERY HUB - PASTA DE SAIDA DO APK
+
+Esta pasta recebe o APK novo depois da compilacao.
+
+Para gerar no proprio computador, execute:
+  BAT\APK\01_GERAR_APK_HOMOLOGACAO.bat
+
+Saida esperada:
+  APK\DeliveryHub-Homologacao-v0.4.7.apk
+
+Para o piloto Firebase com Admin e entregador:
+  BAT\APK\03_GERAR_APK_PILOTO_FIREBASE.bat
+
+Saida:
+  APK\DeliveryHub-Piloto-Firebase-v0.4.7.apk
+
+Se voce usou o GitHub para gerar o APK anterior, mantenha o mesmo processo:
+  BAT\GITHUB\07_GERAR_APK_HOMOLOGACAO.bat
+
+IMPORTANTE:
+- nao copie o APK V0.4.6 ou V0.4.4 para esta pasta;
+- um APK antigo nao possui a correcao da Outbox offline;
+- mantenha o mesmo canal de compilacao para conservar a assinatura Android;
+- a pasta BAT\APK contem os geradores; esta pasta APK recebe o resultado.
