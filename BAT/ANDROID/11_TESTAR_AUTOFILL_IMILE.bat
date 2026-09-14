@@ -106,8 +106,6 @@ if errorlevel 1 (
 )
 
 del /q "%LOG%" "%CONTEXTO%" >nul 2>nul
-findstr /I /C:"DH_AUTOFILL_PROBE|FILL_REQUEST|package=com.imile.redelivery" "%ZIP%" >nul 2>nul
-
 echo.
 echo ============================================================
 echo [OK] DIAGNOSTICO GERADO
