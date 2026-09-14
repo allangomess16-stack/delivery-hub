@@ -9,7 +9,6 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
-import android.provider.Settings;
 
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -224,49 +223,6 @@ public final class NativeBridgePlugin extends Plugin {
         } catch (RuntimeException exception) {
             call.resolve(copyResult("FALHA_NATIVA", false, "Nao foi possivel copiar o codigo."));
         }
-    }
-
-    /**
-     * Guarda por no maximo dois minutos os campos que foram preenchidos no Hub.
-     * A AccessibilityService so atua na iMile e nunca confirma a baixa.
-     */
-    @PluginMethod
-    public void prepareIMileAssist(PluginCall call) {
-        String receiver = normalized(call.getString("recebedor"));
-        String name = normalized(call.getString("nomeCompleto"));
-        String documentType = normalized(call.getString("tipoDocumento"));
-        String documentNumber = normalized(call.getString("numeroDocumento"));
-        String notes = normalized(call.getString("observacao"));
-
-        String status = IMileAssistStore.prepare(
-            getContext(), receiver, name, documentType, documentNumber, notes
-        );
-        JSObject result = new JSObject();
-        if ("PRONTA".equals(status)) {
-            result.put("status", "READY");
-            result.put("message", IMileAssistStore.message(getContext()));
-        } else if ("DESATIVADA".equals(status)) {
-            result.put("status", "DISABLED");
-            result.put("message", "Ative o preenchimento iMile nas configuracoes de acessibilidade do Android.");
-        } else {
-            result.put("status", "MANUAL_REVIEW");
-            result.put("message", "Os dados iMile estao incompletos ou invalidos. Confira nome, tipo e numero do documento no Hub.");
-        }
-        call.resolve(result);
-    }
-
-    @PluginMethod
-    public void openIMileAssistSettings(PluginCall call) {
-        JSObject result = new JSObject();
-        try {
-            Intent intent = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            getContext().startActivity(intent);
-            result.put("opened", true);
-        } catch (RuntimeException exception) {
-            result.put("opened", false);
-        }
-        call.resolve(result);
     }
 
     @PluginMethod
