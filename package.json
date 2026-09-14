@@ -1,7 +1,7 @@
 {
   "name": "delivery-hub",
-  "version": "0.5.9.1",
-  "description": "Delivery Hub V0.5.9.1 - preenchimento direto iMile para teste.",
+  "version": "0.5.10",
+  "description": "Delivery Hub V0.5.10 - diagnóstico privado de Autofill da iMile.",
   "private": true,
   "type": "module",
   "scripts": {
