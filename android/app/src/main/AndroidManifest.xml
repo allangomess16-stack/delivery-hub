@@ -53,21 +53,22 @@
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
 
-        <!-- DELIVERY_HUB_IMILE_ASSIST_START -->
+        <!-- DELIVERY_HUB_AUTOFILL_PROBE_START -->
         <service
-            android:name=".nativebridge.IMileAccessibilityService"
-            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
-            android:exported="true"
-            android:label="@string/delivery_hub_imile_assist_label">
+            android:name=".nativebridge.DeliveryHubAutofillProbe"
+            android:label="@string/delivery_hub_autofill_probe_label"
+            android:permission="android.permission.BIND_AUTOFILL_SERVICE"
+            android:exported="true">
             <intent-filter>
-                <action android:name="android.accessibilityservice.AccessibilityService" />
+                <action android:name="android.service.autofill.AutofillService" />
             </intent-filter>
             <meta-data
-                android:name="android.accessibilityservice"
-                android:resource="@xml/deliveryhub_imile_accessibility" />
+                android:name="android.autofill"
+                android:resource="@xml/deliveryhub_autofill_probe" />
         </service>
-        <!-- DELIVERY_HUB_IMILE_ASSIST_END -->
-    </application>
+        <!-- DELIVERY_HUB_AUTOFILL_PROBE_END -->
+
+</application>
 
     <!-- Permissions -->
 
