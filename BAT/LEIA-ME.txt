@@ -1,0 +1,179 @@
+DELIVERY HUB - GUIA COMPLETO DE BATs
+
+REGRA GERAL
+- Execute os BATs por duplo clique no Windows.
+- Nunca execute arquivos iniciados por _COMUM: eles sao internos.
+- BAT\01_SERVIDOR_LOCAL.bat e o inicio normal sem APK.
+- Para teste iMile, use somente DH_TESTE_INVALIDO; nunca use entrega real.
+
+RAIZ BAT\
+
+01_SERVIDOR_LOCAL.bat
+  Uso diario sem APK. Prepara dependencias, gera o build, abre o navegador no PC
+  e mostra o endereco http://IP_DO_PC:5173 para abrir no celular da mesma rede.
+  A janela deve permanecer aberta. Pode oferecer liberacao da porta no Firewall.
+  O fluxo de carga, Admin e sincronizacao funciona no celular. Por seguranca do
+  navegador, a camera continua exige APK ou HTTPS; neste modo use foto/manual.
+  Este BAT usa o build localserver. Builds operacionais nao aceitam fallback
+  local quando a configuracao Firebase estiver ausente.
+
+02_PREPARAR_AMBIENTE.bat
+  Verifica Node.js/npm e instala dependencias. O BAT 01 chama este arquivo sozinho.
+
+03_VALIDAR_PROJETO.bat
+  Executa validacao TypeScript, testes e build. Use antes de publicar ou enviar APK.
+
+04_CORRIGIR_ACESSO_CELULAR.bat
+  Cria regra privada para a porta 5173 e mostra IP, perfil de rede e diagnostico.
+  Use se o PC abre e o celular nao consegue acessar.
+
+05_RESETAR_DADOS_TESTE.bat
+  Apaga somente dados locais de desenvolvimento apos confirmacao. Nao use em dados
+  operacionais sem conferir a tela de aviso.
+
+ANDROID\
+
+01_PREPARAR_ANDROID.bat
+  Cria/sincroniza o projeto Capacitor Android e aplica visibilidade de apps externos.
+
+02_DIAGNOSTICAR_APPS.bat
+  Com ADB, mostra package, versao, Activity e APK instalado. Nao executa baixa.
+
+03_TESTAR_ABERTURA_APPS.bat
+  Abre apenas o launcher do aplicativo escolhido, sem tracking, foto ou baixa.
+
+04_EXTRAIR_APK_INSTALADO.bat
+  Copia APKs/splits do aparelho para diagnostico privado. Nao publicar esses arquivos.
+
+05_MAPEAR_IMILE_SCANNER.bat
+  Registra Activity e hierarquia visual da iMile para pesquisa do scanner, sem bipar pacote.
+
+06_HOMOLOGAR_DEEP_LINK_IMILE.bat
+  Teste controlado da iMile 2.3.18 / code 458. Confirma versao e abre somente
+  crredelivery:?requestCode=DH_TESTE_INVALIDO. Nao confirma baixa.
+
+07_VALIDAR_OUTBOX_OFFLINE.bat
+  Roteiro da V0.4.6.1. Abre o APK de homologacao, orienta o teste offline,
+  fecha e reabre o app sem limpar dados e permite validar fila, UUID e reenvio.
+
+APK\
+
+00_PREPARAR_SDK_ANDROID.bat
+  Instala/configura JDK e Android SDK local quando necessario. Se o sdkmanager
+  nao criar adb.exe, baixa e repara o Platform Tools automaticamente.
+
+01_GERAR_APK_HOMOLOGACAO.bat
+  Gera APK localmente. Valida o projeto, sincroniza Capacitor, aplica NativeBridge
+  e compila. Pode chamar o BAT 00 automaticamente. O APK usa o ID separado
+  com.deliveryhub.homologacao e pode coexistir com versoes antigas instaladas.
+
+02_ABRIR_PASTA_APK.bat
+  Abre a pasta que contem o APK gerado.
+
+03_GERAR_APK_PILOTO_FIREBASE.bat
+  Gera o APK V0.4.8 com login e Firebase real de homologacao. Use somente
+  depois de BAT\FIREBASE\07_USAR_MODO_FIREBASE.bat.
+
+GITHUB\
+
+00_LOGIN_GITHUB.bat
+  Faz login da GitHub CLI no computador.
+
+01_CONFIGURAR_REPOSITORIO.bat
+  Primeira configuracao do repositorio remoto.
+
+02_SALVAR_TRABALHO.bat
+  Envia alteracoes intermediarias sem publicar versao aprovada.
+
+03_PUBLICAR_VERSAO.bat
+  Valida, publica main, cria tag e Release da versao aprovada.
+
+04_STATUS.bat
+  Mostra branch, remote, alteracoes, commits e tags.
+
+05_ATUALIZAR_LOCAL.bat
+  Atualiza a pasta local com protecao contra alteracoes locais.
+
+06_CRIAR_BRANCH.bat
+  Cria uma branch feature/<nome> para desenvolvimento isolado.
+
+07_GERAR_APK_HOMOLOGACAO.bat
+  Caminho recomendado quando nao ha Android Studio: valida, envia o projeto ao
+  GitHub, dispara Actions e baixa o APK para a pasta APK.
+
+FIREBASE\
+
+01_CRIAR_E_CONFIGURAR.bat
+  Primeira configuracao do Firebase: projeto, banco, app web, regras e Hosting.
+
+02_CRIAR_ADMIN_INICIAL.bat
+  Cria o primeiro login administrativo com senha digitada de forma protegida.
+
+03_SUBIR_ATUALIZACAO.bat
+  Valida, gera build e publica atualizacao no Firebase.
+
+04_VALIDAR_CONFIGURACAO.bat
+  Diagnostica projeto, banco, app e build Firebase.
+
+05_ABRIR_CONSOLE.bat
+  Abre o console Firebase do projeto configurado.
+
+06_USAR_MODO_LOCAL.bat
+  Faz o navegador usar o servidor local de desenvolvimento.
+
+07_USAR_MODO_FIREBASE.bat
+  Faz o navegador usar novamente o backend Firebase.
+
+08_EMULADORES.bat
+  Inicia emuladores Firebase locais para testes sem afetar o projeto remoto.
+
+09_PREPARAR_PILOTO_V047.bat
+  Fluxo legado da V0.4.7.2. Mantenha apenas para reproduzir aquela versao.
+
+10_PREPARAR_PILOTO_V048.bat
+  Fluxo recomendado da V0.4.8. Reutiliza a configuracao Firebase, valida tudo
+  e gera o APK piloto com contratos por versao e fallback iMile.
+
+11_CRIAR_USUARIO_SUPORTE.bat
+  Cria a conta separada SUPORTE. Use email diferente do ADMIN. Essa conta abre
+  o painel de compatibilidade/logs e nao administra cargas ou entregadores.
+
+ARQUIVOS _COMUM
+  _COMUM_ANDROID.bat, _COMUM_APK.bat, _COMUM_GITHUB.bat e _COMUM_FIREBASE.bat
+  sao bibliotecas internas chamadas pelos outros BATs. Nao execute diretamente.
+
+ATUALIZADO NA V0.4.8
+  O servidor local abre no PC e disponibiliza acesso ao celular sem instalar APK.
+  O APK possui modo offline controlado para validar persistencia e idempotencia.
+  O piloto Firebase possui gerador separado para nao misturar a demonstracao local.
+  Publicacao/transferencia de cargas usa PATCH atomico e o cliente REST trata
+  renovacao 401, falha permanente e backoff 429/5xx.
+  A integracao iMile e controlada por versao; falhas usam clipboard + launcher.
+  Logs tecnicos possuem fila separada, nao contem tracking e nao alteram entregas.
+
+ATUALIZADO NA V0.4.8.1
+  A importacao guarda linha/coluna/celula de cada tracking e mostra todas as
+  pessoas envolvidas em duplicidades. A coluna Nº do modelo e ignorada.
+  Use dados-teste\MODELO_CARGAS_DELIVERY_HUB.xlsx para preparar novas cargas.
+
+ATUALIZADO NA V0.4.8.2
+  O mesmo BAT 10 prepara o piloto atual. A conciliacao aceita ignorar colunas
+  auxiliares, repara duplicidades estruturais seguras e a Gestao de cargas
+  localiza etiquetas por texto ou foto. Gerenciar perfis envia redefinicao de
+  senha pelo Firebase sem mostrar ou substituir a senha atual no navegador.
+  O preparador do Android nao usa mais sdkmanager com Java 21: procura um SDK
+  completo anterior e, quando necessario, instala componentes com Android CLI.
+  Se a API 35 ainda nao aparecer, usa o catalogo oficial com verificacao de
+  tamanho e checksum antes de copiar android.jar e aapt2.exe.
+
+ATUALIZADO NA V0.4.8.3
+  A confirmacao de importacao mostra apenas o lote atual. A Gestao de cargas
+  usa referencias CARGA/LOTE, abre somente as ativas por padrao e permite
+  consultar arquivadas. Cargas de teste sem operacao iniciada podem ser
+  removidas sem exclusao destrutiva no Firebase.
+
+ATUALIZADO NA V0.5.0
+  O scanner funciona com ou sem carga distribuida. A carga apenas adiciona
+  contexto; a ausencia na planilha nao bloqueia o envio ao adaptador da
+  transportadora. Releituras do mesmo tracking no mesmo dia nao duplicam o
+  historico local.

@@ -1,0 +1,56 @@
+node_modules/
+dist/
+android/.gradle/
+android/app/build/
+.env
+.env.*
+!.env.example
+
+discovery-artifacts/
+*.apk
+*.apks
+*.aab
+*.jks
+*.keystore
+
+# Planilhas operacionais reais nao sobem para o Git.
+dados-teste/*.xlsx
+dados-teste/*.xls
+
+# Banco compartilhado do servidor local de desenvolvimento
+.delivery-hub-data/
+
+# Firebase local/project-specific generated files
+firebase/projeto.local.env
+firebase/web-sdk-config.raw.json
+firebase/web-sdk-config.json
+public/firebase-config.json
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
+
+# GitHub / arquivos locais de operacao
+*.log
+*.tmp
+*.bak
+.DS_Store
+Thumbs.db
+
+# Arquivos de credenciais/chaves nunca entram no Git
+*.pem
+*.p12
+*.pfx
+service-account*.json
+firebase-admin*.json
+
+# Dados operacionais reais e evidencias
+dados-operacionais/
+evidencias/
+fotos-entrega/
+
+diagnosticos-apk/
+*.apk
+.ferramentas/
+APK/*.apk
+APK/*.apks
+APK/*.aab

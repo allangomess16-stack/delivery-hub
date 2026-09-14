@@ -1,0 +1,9 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Delivery Hub</string>
+    <string name="title_activity_main">Delivery Hub</string>
+    <string name="package_name">com.deliveryhub.app</string>
+    <string name="custom_url_scheme">com.deliveryhub.app</string>
+    <string name="delivery_hub_imile_assist_label">Delivery Hub • preenchimento iMile</string>
+    <string name="delivery_hub_imile_assist_description">Preenche campos previamente conferidos no Delivery Hub. Nunca envia, assina ou confirma uma entrega.</string>
+</resources>

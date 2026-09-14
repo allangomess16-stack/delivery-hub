@@ -1,0 +1,38 @@
+DELIVERY HUB V0.5.9.1 - PREENCHIMENTO DIRETO IMILE
+
+TESTE DESTE MODELO
+
+1. Extraia este ZIP em uma pasta NOVA.
+2. Execute BAT\APK\00_PREPARAR_SDK_ANDROID.bat se esta nova pasta ainda nao
+   tiver o SDK configurado.
+3. Execute BAT\FIREBASE\18_PREPARAR_PILOTO_V055.bat.
+4. Instale manualmente o APK novo gerado na pasta APK, substituindo a versao
+   anterior do Delivery Hub no celular.
+
+NO CELULAR - PRIMEIRA VEZ
+
+1. No fluxo da iMile, registre normalmente foto, relacao, nome, documento e
+   assinatura no Delivery Hub.
+2. Na tela de resultado, toque em ATIVAR/PREPARAR PREENCHIMENTO IMILE.
+3. O Android abrira Acessibilidade. Ative apenas:
+   "Delivery Hub - preenchimento iMile".
+4. Volte ao Hub e toque em ABRIR NOVAMENTE IMILE.
+5. Confira a relacao, nome, documento e notas que foram preenchidos.
+6. Tire foto, colha a assinatura e toque em ENTREGUE no aplicativo iMile.
+
+LIMITES DELIBERADOS
+
+- O servico funciona somente por dois minutos e somente dentro da iMile.
+- A relacao fica registrada no Hub; a iMile pode abrir diretamente na tela
+  Confirmar, onde o preenchimento assistido atua.
+- CPF e o tipo padrao. RG, CNH, PASSAPORTE e OUTRO devem ser conferidos e
+  selecionados manualmente no aplicativo da iMile.
+- Foto, assinatura e ENTREGUE nunca sao acionados pelo Delivery Hub.
+
+DIAGNOSTICO
+
+Para mapear mudancas futuras da iMile, execute:
+BAT\ANDROID\09_GRAVAR_SESSAO_EXPLORATORIA_IMILE.bat
+
+Nos tres marcadores, deixe cada tela indicada no celular e pressione ENTER no
+computador. Envie depois a pasta diagnosticos-apk inteira.

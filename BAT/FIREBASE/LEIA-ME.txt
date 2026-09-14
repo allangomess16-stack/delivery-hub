@@ -1,0 +1,105 @@
+DELIVERY HUB - FIREBASE
+
+01_CRIAR_E_CONFIGURAR.bat
+  Primeira execucao. Cria projeto, Realtime Database, App Web,
+  ativa Email/Senha, publica regras e Hosting.
+  Se uma tentativa anterior parou na publicacao das regras, execute novamente
+  e escolha reutilizar o projeto existente.
+  A configuracao ativa fica em firebase.json na raiz; regras ficam em
+  firebase\database.rules.json e o build do Hosting em dist.
+
+02_CRIAR_ADMIN_INICIAL.bat
+  Cria o primeiro login ADMIN com senha digitada de forma protegida.
+  Antes de criar, recupera novamente a configuracao SDK do projeto.
+  Tambem garante Email/Senha ativo e permite repetir um bootstrap interrompido.
+  A validacao JSON usa script Node proprio, sem expressoes inline do CMD.
+  A gravacao administrativa usa database:set --force, compativel com CLI 15.
+  O perfil temporario usa UTF-8 sem BOM, compativel com Windows PowerShell 5.
+
+03_SUBIR_ATUALIZACAO.bat
+  Uso normal depois da configuracao: valida, builda e publica.
+  Prepara automaticamente as dependencias quando a pasta acabou de ser extraida.
+  Regenera public\firebase-config.json antes do build para impedir deploy local.
+
+04_VALIDAR_CONFIGURACAO.bat
+  Prepara dependencias e diagnostica CLI, projeto, banco, app, runtime e build.
+  Retorna erro se qualquer etapa falhar; nao exibe mais falso resultado positivo.
+
+05_ABRIR_CONSOLE.bat
+  Abre o console Firebase do projeto configurado.
+
+06_USAR_MODO_LOCAL.bat
+  Volta temporariamente ao servidor local de desenvolvimento.
+
+07_USAR_MODO_FIREBASE.bat
+  Reativa o backend Firebase no navegador.
+  Recria public\firebase-config.json com os dados do projeto atual.
+
+08_EMULADORES.bat
+  Inicia os emuladores locais Firebase.
+
+09_PREPARAR_PILOTO_V047.bat
+  Fluxo legado: ativa e valida o Firebase e gera o piloto V0.4.7.2.
+  Procura automaticamente projeto.local.env em versoes anteriores vizinhas.
+  Depois, use BAT\01_SERVIDOR_LOCAL.bat para abrir o Admin no computador.
+
+10_PREPARAR_PILOTO_V048.bat
+  Fluxo recomendado. Reutiliza projeto.local.env de uma versao anterior,
+  ativa o modo Firebase, valida projeto/backend e gera o piloto V0.4.8.
+
+11_CRIAR_USUARIO_SUPORTE.bat
+  Cria o perfil SUPORTE para o proprietario tecnico da plataforma.
+  Use email diferente do ADMIN da empresa: um perfil nunca sobrescreve o outro.
+  O suporte ve logs sanitizados e controla Deep Link/fallback; nao gerencia cargas.
+
+CONEXOES DO PLANO SPARK
+  O APK do entregador usa chamadas REST curtas e nao mantem conexao aberta com
+  o Realtime Database. Somente o Admin usa assinaturas em tempo real.
+  O suporte faz consultas REST por um dia, limitadas no servidor a 200 eventos.
+12_PREPARAR_PILOTO_V049.bat
+  Gera o piloto da V0.4.9 com Scanner Universal, Firebase e NativeBridge.
+
+13_PREPARAR_PILOTO_V050.bat
+  Gera o piloto da V0.5.0 com POD Universal offline, assinatura e NativeBridge.
+  Reutiliza a preparacao segura do piloto V0.4.8 sem duplicar a logica.
+
+14_PREPARAR_PILOTO_V051.bat
+  Fluxo recomendado para esta versao. Reutiliza a configuracao Firebase
+  local, valida o backend e gera o APK V0.5.1 da operacao hibrida.
+  Depois de gerar o APK, execute 03_SUBIR_ATUALIZACAO.bat antes de testar
+  EXTRA_ROTA: a publicacao atualiza as regras e o painel web do Admin.
+
+15_PREPARAR_PILOTO_V052.bat
+  Gera o piloto V0.5.2. Mantem a operacao hibrida da V0.5.1 e adiciona a
+  matriz de capacidades do POD por transportadora, com fallback resiliente.
+  Depois de gerar, execute 03_SUBIR_ATUALIZACAO.bat e use o roteiro em
+  docs\V0.5.2_MATRIZ_CAPACIDADES_POD.md antes da entrega real controlada.
+
+16_PREPARAR_PILOTO_V053.bat
+  Fluxo recomendado para a V0.5.3. Gera o APK com Lobby inicial, Cockpit
+  operacional e retomada de entrega preservada. Depois de gerar, execute
+  03_SUBIR_ATUALIZACAO.bat para publicar o painel web atual.
+
+17_PREPARAR_PILOTO_V054.bat
+  Fluxo recomendado para a V0.5.4. Gera o APK com evidência de foto pela
+  câmera ou pela galeria, preservada offline. Depois de gerar, execute
+  03_SUBIR_ATUALIZACAO.bat e siga docs\V0.5.4_FOTOS_CAMERA_GALERIA.md.
+
+18_PREPARAR_PILOTO_V055.bat
+  Fluxo recomendado para a V0.5.5. Gera o APK e prepara o manifesto de
+  atualização. Como o Spark não hospeda APK, publique a Release GitHub e envie
+  o APK por GITHUB\08_ENVIAR_APK_PARA_RELEASE.bat antes do 03_SUBIR_ATUALIZACAO.
+
+19_PREPARAR_PILOTO_V056.bat
+  Fluxo recomendado para a V0.5.6. Gera o APK com galeria no campo auxiliar
+  do scanner e o adaptador Anjun nível 1: copiar tracking e abrir somente o
+  launcher validado. Depois publique a Release GitHub, envie o APK e execute
+  03_SUBIR_ATUALIZACAO.bat para publicar o manifesto.
+
+FLUXO SIMPLIFICADO
+  Para as próximas atualizações, execute apenas:
+  BAT\PUBLICAR_PILOTO_COMPLETO.bat
+
+  Esse arquivo chama automaticamente a preparação do APK, a publicação da
+  Release GitHub, o envio do APK e o manifesto Firebase. Os BATs numerados
+  continuam disponíveis para diagnóstico isolado ou recuperação de uma etapa.

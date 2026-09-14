@@ -1,0 +1,81 @@
+DELIVERY HUB V0.5.0 - POD UNIVERSAL
+
+ESTE ZIP JA CONTEM A ESTRUTURA COMPLETA DO SISTEMA.
+
+PADRAO:
+1. Baixe o ZIP COMPLETO.
+2. Extraia em uma PASTA NOVA.
+3. Nao copie arquivos manualmente da versao anterior.
+4. Entre na pasta delivery-hub-v0.5.0.
+5. Para publicar esta revisao no Firebase, execute primeiro:
+
+   BAT\FIREBASE\03_SUBIR_ATUALIZACAO.bat
+
+6. Depois gere o APK atualizado com:
+
+   BAT\FIREBASE\13_PREPARAR_PILOTO_V050.bat
+
+O BAT:
+- ativa a configuracao Firebase do computador;
+- valida projeto e backend;
+- executa TypeScript, testes e build;
+- gera o APK piloto com login;
+- mantem a homologacao local separada.
+
+APK ESPERADO:
+APK\DeliveryHub-Piloto-Firebase-v0.5.0.apk
+
+A pasta APK ja esta incluida no projeto. Antes da compilacao ela contem apenas
+um LEIA-ME; o arquivo .apk aparece ali depois que o gerador terminar.
+
+O QUE HOMOLOGAR NESTA VERSAO:
+- Admin no computador e entregador no APK usando o mesmo Firebase;
+- carga ficticia publicada pelo Admin chegando ao entregador correto;
+- conclusao offline persistindo depois de fechar e reabrir o APK;
+- retorno da rede enviando uma unica operacao pelo UUID;
+- atualizacao do Admin sem interromper scanner ou formularios;
+- diferenca entre ENTREGA FISICA, NO HUB e BAIXA NA TRANSPORTADORA.
+- uma segunda planilha do mesmo dia consolida pacotes sem criar outra carga;
+- fila com erro definitivo em um item nao impede o envio dos demais.
+- iMile 2.3.18 abre pelo Deep Link no botao operacional apos a entrega;
+- modo fallback copia o tracking e abre o launcher sem alterar o estado da carga;
+- versao iMile desconhecida nunca recebe uma URI nao homologada;
+- painel SUPORTE exibe logs sanitizados e alterna Deep Link/fallback.
+- coluna de numeracao e sequencias auxiliares nao criam falsos entregadores;
+- coluna auxiliar inesperada pode ser ignorada na conciliacao;
+- duas cargas ativas pendentes do mesmo dia sao reparadas com seguranca;
+- Gestao de cargas localiza pacote por tracking ou foto e abre a transferencia;
+- Gerenciar perfis envia redefinicao de senha para o email cadastrado.
+- scanner livre permite registrar POD sem depender de uma carga importada;
+- foto, recebedor e assinatura ficam salvos antes de abrir a transportadora;
+- iMile abre automaticamente depois que a operacao entra na Outbox.
+
+IMPORTANTE:
+- homologacao NAO envia baixa para transportadoras;
+- "NO HUB / AGUARDANDO INTEGRACAO" NAO significa baixa confirmada na J&T,
+  Anjun ou iMile;
+- execucao com o Android totalmente encerrado ainda nao e garantida; a fila
+  permanece salva e retoma na proxima abertura.
+
+TESTE IMILE:
+BAT\ANDROID\06_HOMOLOGAR_DEEP_LINK_IMILE.bat
+
+Use somente DH_TESTE_INVALIDO. O teste abre pesquisa e nao confirma baixa.
+
+ROTEIRO DO PILOTO:
+docs\V0.4.8_CONTRATOS_FALLBACK_SUPORTE.md
+docs\V0.4.8.1_RASTREABILIDADE_PLANILHA_ADB.md
+docs\V0.4.8.2_ADMIN_REPARO_SCANNER.md
+docs\V0.4.8.3_GESTAO_PROFISSIONAL_CARGAS.md
+docs\V0.4.9_SCANNER_UNIVERSAL.md
+docs\V0.5.0_POD_UNIVERSAL.md
+
+RELATORIO DA AUDITORIA:
+docs\AUDITORIA_PONTA_A_PONTA_V0.4.7.2.md
+
+ACESSO SEM APK:
+BAT\01_SERVIDOR_LOCAL.bat abre o projeto no PC e exibe o endereco para o celular na mesma rede.
+Mantenha a janela do servidor aberta durante o acesso pelo celular.
+
+EXTRAIR APK IMILE:
+BAT\ANDROID\04_EXTRAIR_APK_INSTALADO.bat

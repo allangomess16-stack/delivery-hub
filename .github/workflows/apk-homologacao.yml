@@ -1,0 +1,101 @@
+name: Gerar APK Homologacao
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gerar-apk:
+    name: APK Android de homologacao
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Configurar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Preservar assinatura debug de homologacao
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: deliveryhub-homologacao-debug-keystore-v1
+
+      - name: Instalar dependencias
+        run: npm install --no-audit --no-fund
+
+      - name: Ler versao
+        id: versao
+        shell: bash
+        run: |
+          echo "numero=$(tr -d '\r\n' < VERSION)" >> "$GITHUB_OUTPUT"
+
+      - name: Habilitar modo homologacao
+        shell: bash
+        run: |
+          cat > public/homologacao-config.json <<'EOF'
+          {
+            "habilitado": true
+          }
+          EOF
+
+      - name: Validar TypeScript
+        run: npm run validate
+
+      - name: Executar testes
+        run: npm run test
+
+      - name: Gerar build web
+        run: npm run build
+
+      - name: Criar projeto Android
+        shell: bash
+        run: |
+          if [ -f android/app/src/main/AndroidManifest.xml ]; then
+            echo "Projeto Android versionado ja existe; reutilizando."
+          else
+            npx cap add android
+          fi
+
+      - name: Sincronizar Capacitor
+        run: npx cap sync android
+
+      - name: Aplicar configuracao e NativeBridge Android
+        # Mantem a compilacao remota equivalente ao gerador local de APK e a ponte iMile.
+        run: |
+          npm run android:configurar
+          node scripts/node/aplicar-identidade-apk-homologacao.mjs
+
+      - name: Compilar APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleDebug
+
+      - name: Preparar artefato
+        shell: bash
+        run: |
+          mkdir -p APK
+          cp android/app/build/outputs/apk/debug/app-debug.apk \
+             "APK/DeliveryHub-Homologacao-v${{ steps.versao.outputs.numero }}.apk"
+          sha256sum "APK/DeliveryHub-Homologacao-v${{ steps.versao.outputs.numero }}.apk" \
+             > "APK/DeliveryHub-Homologacao-v${{ steps.versao.outputs.numero }}.sha256.txt"
+
+      - name: Disponibilizar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: DeliveryHub-Homologacao
+          path: APK/
+          if-no-files-found: error
+          retention-days: 30

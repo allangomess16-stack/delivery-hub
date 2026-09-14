@@ -1,0 +1,232 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "usuarios": {
+      ".read": "auth != null && root.child('usuarios').child(auth.uid).child('tipo').val() === 'ADMIN'",
+      ".indexOn": [
+        "entregadorId",
+        "tipo"
+      ],
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || root.child('usuarios').child(auth.uid).child('tipo').val() === 'ADMIN')",
+        ".write": "auth != null && root.child('usuarios').child(auth.uid).child('tipo').val() === 'ADMIN'",
+        ".validate": "newData.hasChildren(['email', 'nome', 'tipo', 'ativo', 'criadoEm', 'atualizadoEm']) && newData.child('email').isString() && newData.child('nome').isString() && newData.child('ativo').isBoolean() && (newData.child('tipo').val() === 'ADMIN' || newData.child('tipo').val() === 'SUPORTE' || newData.child('tipo').val() === 'ENTREGADOR') && (newData.child('tipo').val() !== 'ENTREGADOR' || newData.child('entregadorId').isString())",
+        "email": {
+          ".validate": "newData.isString() && newData.val().length > 3 && newData.val().length < 255"
+        },
+        "nome": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length < 160"
+        },
+        "tipo": {
+          ".validate": "newData.val() === 'ADMIN' || newData.val() === 'SUPORTE' || newData.val() === 'ENTREGADOR'"
+        },
+        "ativo": {
+          ".validate": "newData.isBoolean()"
+        },
+        "entregadorId": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length < 100"
+        },
+        "criadoEm": {
+          ".validate": "newData.isString()"
+        },
+        "atualizadoEm": {
+          ".validate": "newData.isString()"
+        },
+        "$outro": {
+          ".validate": false
+        }
+      }
+    },
+    "dados": {
+      "profiles": {
+        "couriers": {
+          "$entregadorId": {
+            ".read": "auth != null && (root.child('usuarios').child(auth.uid).child('tipo').val() === 'ADMIN' || (root.child('usuarios').child(auth.uid).child('ativo').val() === true && root.child('usuarios').child(auth.uid).child('entregadorId').val() === $entregadorId))",
+            ".write": "auth != null && root.child('usuarios').child(auth.uid).child('tipo').val() === 'ADMIN'"
+          }
+        }
+      },
+      "profile-links": {
+        ".read": "auth != null && root.child('usuarios').child(auth.uid).child('tipo').val() === 'ADMIN'",
+        ".write": "auth != null && root.child('usuarios').child(auth.uid).child('tipo').val() === 'ADMIN'"
+      }
+    },
+    "cargas": {
+      "$entregadorId": {
+        ".read": "auth != null && (root.child('usuarios').child(auth.uid).child('tipo').val() === 'ADMIN' || (root.child('usuarios').child(auth.uid).child('ativo').val() === true && root.child('usuarios').child(auth.uid).child('entregadorId').val() === $entregadorId))",
+        ".write": "auth != null && root.child('usuarios').child(auth.uid).child('tipo').val() === 'ADMIN'"
+      }
+    },
+    "operacoes": {
+      "$entregadorId": {
+        ".read": "auth != null && (root.child('usuarios').child(auth.uid).child('tipo').val() === 'ADMIN' || (root.child('usuarios').child(auth.uid).child('ativo').val() === true && root.child('usuarios').child(auth.uid).child('entregadorId').val() === $entregadorId))",
+        "$cargaId": {
+          "$pacoteId": {
+            "$operacaoId": {
+              ".write": "auth != null && newData.exists() && (root.child('usuarios').child(auth.uid).child('tipo').val() === 'ADMIN' || (root.child('usuarios').child(auth.uid).child('ativo').val() === true && root.child('usuarios').child(auth.uid).child('entregadorId').val() === $entregadorId && newData.child('usuarioId').val() === auth.uid && newData.child('entrega').child('estadoIntegracao').val() === 'AGUARDANDO_INTEGRACAO'))",
+              ".validate": "newData.hasChildren(['operacaoId', 'tipo', 'entrega', 'usuarioId', 'atualizadoEm']) && newData.child('operacaoId').val() === $operacaoId && (root.child('usuarios').child(auth.uid).child('tipo').val() === 'ADMIN' || newData.child('usuarioId').val() === auth.uid)",
+              "operacaoId": {
+                ".validate": "newData.isString() && newData.val().length >= 16 && newData.val().length < 100"
+              },
+              "tipo": {
+                ".validate": "newData.val() === 'ENTREGA_CONFIRMADA' || newData.val() === 'NAO_ENTREGUE'"
+              },
+              "usuarioId": {
+                ".validate": "newData.isString()"
+              },
+              "atualizadoEm": {
+                ".validate": "newData.isString()"
+              },
+              "tracking": {
+                ".validate": "newData.isString() && newData.val().length > 2 && newData.val().length < 100"
+              },
+              "transportadoraId": {
+                ".validate": "newData.val() === 'IMILE' || newData.val() === 'ANJUN' || newData.val() === 'JNT' || newData.val() === 'OUTRA'"
+              },
+              "contextoOperacional": {
+                ".validate": "newData.val() === null || newData.val() === 'REGULAR' || newData.val() === 'EXTRA_ROTA' || newData.val() === 'AVULSA'"
+              },
+              "alertaAdmin": {
+                ".validate": "newData.isBoolean()"
+              },
+              "conciliacaoExtraRota": {
+                "status": { ".validate": "newData.val() === 'ABERTA' || newData.val() === 'RESOLVIDA'" },
+                "resolvidaEm": { ".validate": "newData.isString() && newData.val().length < 50" },
+                "$outro": { ".validate": false }
+              },
+              "entrega": {
+                ".validate": "newData.hasChildren(['estadoFisico', 'estadoIntegracao'])",
+                "estadoFisico": {
+                  ".validate": "newData.val() === 'PENDENTE' || newData.val() === 'PREPARANDO' || newData.val() === 'AGUARDANDO_RECEBEDOR' || newData.val() === 'ENTREGUE' || newData.val() === 'NAO_ENTREGUE'"
+                },
+                "estadoIntegracao": {
+                  ".validate": "newData.val() === 'NAO_INICIADA' || newData.val() === 'AGUARDANDO_SINCRONIZACAO' || newData.val() === 'SINCRONIZANDO' || newData.val() === 'AGUARDANDO_INTEGRACAO' || newData.val() === 'CONFIRMADA' || newData.val() === 'ERRO' || newData.val() === 'ACAO_MANUAL'"
+                },
+                "fotos": {
+                  "$indice": {
+                    ".validate": "$indice.matches(/^[0-9]$/) && newData.hasChildren(['id', 'tipo', 'chaveArquivo', 'capturadaEm'])",
+                    "id": { ".validate": "newData.isString() && newData.val().length < 100" },
+                    "tipo": { ".validate": "newData.isString() && newData.val().length < 40" },
+                    "chaveArquivo": { ".validate": "newData.isString() && newData.val().length < 300" },
+                    "capturadaEm": { ".validate": "newData.isString() && newData.val().length < 50" },
+                    "largura": { ".validate": "newData.isNumber()" },
+                    "altura": { ".validate": "newData.isNumber()" },
+                    "tamanhoBytes": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+                    "$outro": { ".validate": false }
+                  }
+                },
+                "recebedor": {
+                  "tipo": { ".validate": "newData.isString() && newData.val().length < 30" },
+                  "nome": { ".validate": "newData.isString() && newData.val().length < 160" },
+                  "documento": { ".validate": "newData.isString() && newData.val().length < 80" },
+                  "$outro": { ".validate": false }
+                },
+                "dadosComprovacaoImile": {
+                  ".validate": "newData.hasChildren(['recebedor', 'nomeCompleto', 'tipoDocumento', 'numeroDocumento'])",
+                  "recebedor": { ".validate": "newData.isString() && newData.val().length < 40" },
+                  "nomeCompleto": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length < 161" },
+                  "tipoDocumento": { ".validate": "newData.val() === 'CPF' || newData.val() === 'RG' || newData.val() === 'CNH' || newData.val() === 'PASSAPORTE' || newData.val() === 'OUTRO'" },
+                  "numeroDocumento": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length < 81" },
+                  "observacao": { ".validate": "newData.isString() && newData.val().length < 501" },
+                  "$outro": { ".validate": false }
+                },
+                "assinatura": {
+                  ".validate": "newData.hasChildren(['chaveArquivo', 'capturadaEm', 'largura', 'altura', 'tamanhoBytes'])",
+                  "chaveArquivo": { ".validate": "newData.isString() && newData.val().length < 300" },
+                  "capturadaEm": { ".validate": "newData.isString() && newData.val().length < 50" },
+                  "largura": { ".validate": "newData.isNumber() && newData.val() > 0" },
+                  "altura": { ".validate": "newData.isNumber() && newData.val() > 0" },
+                  "tamanhoBytes": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+                  "$outro": { ".validate": false }
+                },
+                "motivoNaoEntrega": { ".validate": "newData.isString() && newData.val().length < 80" },
+                "iniciadaEm": { ".validate": "newData.isString() && newData.val().length < 50" },
+                "concluidaEm": { ".validate": "newData.isString() && newData.val().length < 50" },
+                "eventos": {
+                  "$indice": {
+                    ".validate": "$indice.matches(/^([0-9]|[1-9][0-9])$/) && newData.hasChildren(['id', 'tipo', 'criadoEm', 'descricao'])",
+                    "id": { ".validate": "newData.isString() && newData.val().length < 100" },
+                    "tipo": { ".validate": "newData.isString() && newData.val().length < 80" },
+                    "criadoEm": { ".validate": "newData.isString() && newData.val().length < 50" },
+                    "descricao": { ".validate": "newData.isString() && newData.val().length < 500" },
+                    "$outro": { ".validate": false }
+                  }
+                },
+                "ultimaAcaoDesfazivel": {
+                  "estadoFisicoAnterior": { ".validate": "newData.isString() && newData.val().length < 40" },
+                  "motivoNaoEntregaAnterior": { ".validate": "newData.isString() && newData.val().length < 80" },
+                  "concluidaEm": { ".validate": "newData.isString() && newData.val().length < 50" },
+                  "$outro": { ".validate": false }
+                },
+                "operacaoIntegracaoId": { ".validate": "newData.isString() && newData.val() === $operacaoId" },
+                "sincronizadaEm": { ".validate": "newData.isString() && newData.val().length < 50" },
+                "confirmadaTransportadoraEm": { ".validate": "newData.isString() && newData.val().length < 50" },
+                "ultimoErroIntegracao": { ".validate": "newData.isString() && newData.val().length < 500" },
+                "$outro": {
+                  ".validate": false
+                }
+              },
+              "$outro": {
+                ".validate": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "meta": {
+      ".read": "auth != null",
+      "integracoes": {
+        "$transportadora": {
+          "$versionCode": {
+            ".write": "auth != null && newData.exists() && root.child('usuarios').child(auth.uid).child('tipo').val() === 'SUPORTE'",
+            ".validate": "newData.hasChildren(['versaoSchema', 'transportadora', 'versionCode', 'versaoContrato', 'habilitado', 'modo', 'evidencia', 'atualizadoEm']) && newData.child('versaoSchema').val() === 1 && newData.child('transportadora').val() === $transportadora && newData.child('versionCode').val() === $versionCode",
+            "versaoSchema": { ".validate": "newData.val() === 1" },
+            "transportadora": { ".validate": "newData.val() === 'IMILE' || newData.val() === 'ANJUN' || newData.val() === 'JNT'" },
+            "versionCode": { ".validate": "newData.isString() && newData.val().matches(/^[0-9]{1,12}$/)" },
+            "protocoloId": { ".validate": "newData.val() === null || (newData.isString() && newData.val().length <= 80)" },
+            "versaoContrato": { ".validate": "newData.isNumber() && newData.val() >= 1" },
+            "habilitado": { ".validate": "newData.isBoolean()" },
+            "modo": { ".validate": "newData.val() === 'DEEPLINK' || newData.val() === 'CLIPBOARD_APP' || newData.val() === 'MANUAL'" },
+            "evidencia": { ".validate": "newData.val() === 'UNKNOWN' || newData.val() === 'MANIFEST_DISCOVERED' || newData.val() === 'CODE_DISCOVERED' || newData.val() === 'ADB_VALIDATED' || newData.val() === 'DEVICE_VALIDATED' || newData.val() === 'PRODUCTION_VALIDATED'" },
+            "atualizadoEm": { ".validate": "newData.isString() && newData.val().length < 50" },
+            "expiraEm": { ".validate": "newData.isString() && newData.val().length < 50" },
+            "motivo": { ".validate": "newData.isString() && newData.val().length <= 300" },
+            "$outro": { ".validate": false }
+          }
+        }
+      }
+    },
+    "suporte": {
+      ".read": false,
+      ".write": false,
+      "integracoes": {
+        "$dia": {
+          ".read": "auth != null && root.child('usuarios').child(auth.uid).child('tipo').val() === 'SUPORTE' && query.orderByKey && query.limitToLast != null && query.limitToLast <= 200",
+          ".validate": "$dia.matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)",
+          "$eventoId": {
+            ".write": "auth != null && root.child('usuarios').child(auth.uid).child('ativo').val() === true && !data.exists() && newData.exists() && newData.child('usuarioId').val() === auth.uid",
+            ".validate": "newData.hasChildren(['usuarioId', 'evento']) && newData.child('evento').child('eventoId').val() === $eventoId && newData.child('evento').child('ocorridoEm').val().beginsWith($dia)",
+            "usuarioId": { ".validate": "newData.isString() && newData.val() === auth.uid" },
+            "evento": {
+              ".validate": "newData.hasChildren(['eventoId', 'ocorridoEm', 'versaoDeliveryHub', 'transportadora', 'packageName', 'etapa', 'codigo', 'estrategia'])",
+              "eventoId": { ".validate": "newData.isString() && newData.val() === $eventoId && newData.val().length >= 16 && newData.val().length < 100" },
+              "ocorridoEm": { ".validate": "newData.isString() && newData.val().length < 50" },
+              "versaoDeliveryHub": { ".validate": "newData.isString() && newData.val().length < 30" },
+              "transportadora": { ".validate": "newData.val() === 'IMILE' || newData.val() === 'ANJUN' || newData.val() === 'JNT'" },
+              "packageName": { ".validate": "newData.val() === 'com.imile.redelivery' || newData.val() === 'com.anjun.supplierManagement'" },
+              "versionCode": { ".validate": "newData.isString() && newData.val().length < 30" },
+              "versaoContrato": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+              "etapa": { ".validate": "newData.val() === 'CONSULTAR_APP' || newData.val() === 'RESOLVER_CONTRATO' || newData.val() === 'ABRIR_DEEP_LINK' || newData.val() === 'COPIAR_TRACKING' || newData.val() === 'ABRIR_APLICATIVO' || newData.val() === 'RESULTADO'" },
+              "codigo": { ".validate": "newData.isString() && newData.val().length < 80" },
+              "estrategia": { ".validate": "newData.val() === 'DEEPLINK' || newData.val() === 'CLIPBOARD_APP' || newData.val() === 'MANUAL'" },
+              "$outro": { ".validate": false }
+            },
+            "$outro": { ".validate": false }
+          }
+        }
+      }
+    }
+  }
+}
