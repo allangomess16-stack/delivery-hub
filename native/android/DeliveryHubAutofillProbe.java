@@ -6,6 +6,7 @@ import android.os.Build;
 import android.os.CancellationSignal;
 import android.service.autofill.AutofillService;
 import android.service.autofill.FillCallback;
+import android.service.autofill.FillContext;
 import android.service.autofill.FillRequest;
 import android.service.autofill.SaveCallback;
 import android.service.autofill.SaveRequest;
@@ -34,7 +35,7 @@ public final class DeliveryHubAutofillProbe extends AutofillService {
         }
 
         try {
-            List<FillRequest.FillContext> contexts = request.getFillContexts();
+            List<FillContext> contexts = request.getFillContexts();
             if (contexts == null || contexts.isEmpty()) {
                 log("FILL_REQUEST|status=NO_CONTEXT");
                 callback.onSuccess(null);
